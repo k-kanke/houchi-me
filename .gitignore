@@ -48,3 +48,7 @@ logs/
 coverage/
 .nyc_output/
 .vercel
+
+supabase/
+.vite/
+

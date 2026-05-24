@@ -34,21 +34,24 @@
 
 ```
 team-05/
-├── src/
-│   ├── App.jsx                 # タブ遷移・予約/ログ/投稿の状態管理（ローカルのみ）
-│   ├── data/dummyData.js       # 体験会・ユーザー・好奇心マップ等の静的データ
-│   ├── screens/
-│   │   ├── HomeScreen.jsx      # 縦スナップフィード + モーダル
-│   │   ├── ProfileScreen.jsx   # プロフィール・マップ・予約・ログ・交換タブ
-│   │   ├── PostScreen.jsx      # 体験会投稿フォーム
-│   │   └── LogScreen.jsx       # 参加後ログ（オーバーレイ）
-│   └── components/
-│       ├── ExperienceCard.jsx  # フィードカード（TikTok 風 UI）
-│       ├── ExperienceModal.jsx # 詳細 + 予約完了
-│       ├── BottomTabBar.jsx    # Home / 投稿 / プロフィール
-│       └── …（Button, Badge, StarRating, PointBurst）
-├── package.json
-└── README.md                   # ハッカソン用テンプレ（未記入多数）
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx                 # タブ遷移・予約/ログ/投稿の状態管理
+│   │   ├── data/dummyData.js       # 体験会・ユーザー・好奇心マップ等の静的データ
+│   │   ├── screens/
+│   │   │   ├── HomeScreen.jsx      # 縦スナップフィード + モーダル
+│   │   │   ├── ProfileScreen.jsx   # プロフィール・マップ・予約・ログ・交換タブ
+│   │   │   ├── PostScreen.jsx      # 体験会投稿フォーム
+│   │   │   └── LogScreen.jsx       # 参加後ログ（オーバーレイ）
+│   │   └── components/
+│   │       ├── ExperienceCard.jsx  # フィードカード
+│   │       ├── ExperienceModal.jsx # 詳細 + 予約完了
+│   │       ├── BottomTabBar.jsx    # Home / 投稿 / プロフィール
+│   │       └── …（Button, Badge, StarRating, PointBurst）
+│   └── package.json
+├── backend/
+│   └── supabase/
+└── README.md
 ```
 
 ### 2.2 画面別：設計書 vs 実装
@@ -278,7 +281,7 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 - [ ] **POST-101** — React Native / Expo への移行 or 共有ロジック化 `P3` — 設計書準拠のネイティブ体験
 - [ ] **POST-102** — 分析イベント送信（§15 KPI） `P2` — Modal Open / Reserve / Log 等
-- [ ] **POST-103** — Preview Deploy（PR ごと） `P2` — Vercel
+- [x] **POST-103** — Preview Deploy（PR ごと） `P2` — Vercel
 - [ ] **POST-104** — AWS / Cloudflare 検討 `P3` — 大規模配信時
 
 ---

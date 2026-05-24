@@ -1,0 +1,30 @@
+services:
+  web:
+    build:
+      context: .
+      target: development
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    environment:
+      VITE_SUPABASE_URL: "${VITE_SUPABASE_URL}"
+      VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
+      CHOKIDAR_USEPOLLING: "true"
+    volumes:
+      - .:/app
+      - web_node_modules:/app/node_modules
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0 --port 5173"
+
+  web-prod:
+    build:
+      context: .
+      target: production
+      args:
+        VITE_SUPABASE_URL: "${VITE_SUPABASE_URL}"
+        VITE_SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}"
+    ports:
+      - "${WEB_PROD_PORT:-8080}:80"
+    profiles:
+      - prod
+
+volumes:
+  web_node_modules:

@@ -2,21 +2,23 @@
 
 ## 構成
 
-- スキーマ変更は `supabase/migrations/` に SQL ファイルで管理
+- スキーマ変更は `backend/supabase/migrations/` に SQL ファイルで管理
 - GUI（Supabase ダッシュボード）では確認のみ行い、直接編集しない
 
 ## マイグレーションファイルの作り方
 
 ```bash
+cd backend/supabase
 supabase migration new <名前>
 # 例: supabase migration new add_saved_experiences
 ```
 
-`supabase/migrations/<timestamp>_<名前>.sql` が生成されるので SQL を書く。
+`backend/supabase/migrations/<timestamp>_<名前>.sql` が生成されるので SQL を書く。
 
 ## DB への適用
 
 ```bash
+cd backend/supabase
 supabase db push
 ```
 
@@ -25,6 +27,7 @@ supabase db push
 ## 現在のマイグレーション一覧確認
 
 ```bash
+cd backend/supabase
 supabase migration list
 ```
 

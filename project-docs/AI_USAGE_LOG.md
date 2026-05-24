@@ -328,6 +328,46 @@
 - **評価**：一部採用
 - **採用 / 不採用の理由**：seed SQL 自体は採用。Docker Desktop 未起動で実際の DB reset 検証ができなかったため、実 DB への投入確認は Docker 起動後の追加確認タスクとして残した。
 
+### #010 CI/CD ブランチ作成と GitHub Actions 追加
+
+- **時刻**：02:35
+- **ツール**：Codex
+- **目的**：`rule.md` のブランチ命名規則と `plan.md` の `POST-103` に沿って、PR ごとの CI/CD 基盤を追加する。
+- **プロンプト**：
+  ```
+  '/Users/abemasatoshi/Development/Engineer Guild Hackathon 2026/team-05/plan.md''/Users/abemasatoshi/Development/Engineer Guild Hackathon 2026/team-05/rule.md'
+
+  ci/cdを作るブランチを通って
+  これに規則に則って作成してください
+  ```
+- **出力サマリ**：
+  - `main` から `ci/post-103-preview-deploy` ブランチを作成した。
+  - `.github/workflows/ci.yml` を追加し、PR / 主要ブランチ push 時に `npm ci` と `npm run build` を実行する CI を構成した。
+  - `.github/workflows/vercel-preview.yml` を追加し、PR ごとに Vercel Preview を発行するワークフローを追加した。
+  - Vercel Secrets が未設定でもワークフロー全体が落ちないようにし、Actions の Summary にスキップ理由または Preview URL が残る構成にした。
+  - `plan.md` の `POST-103` を完了に更新した。
+- **評価**：採用
+- **採用 / 不採用の理由**：ハッカソン運用で必要な「PR ごとのビルド確認」と「Preview URL 発行」の最短経路になっており、`rule.md` の `ci/...` ブランチ規則にも一致しているため採用。
+
+### #011 リポジトリ構成の整理（frontend / backend 分離）
+
+- **時刻**：02:25
+- **ツール**：Codex
+- **目的**：ルート直下にフロント・Supabase・Docker 関連が混在して見通しが悪くなっていたため、`frontend/` と `backend/` に分離する。
+- **プロンプト**：
+  ```
+  これレポジトリがぐちゃぐちゃしすぎ
+
+  [Image #1]これにリファクタして
+  ```
+- **出力サマリ**：
+  - フロントエンド一式を `frontend/` に移動し、`package.json`、`src/`、Vite/Tailwind 設定、Docker 関連、生成物も同ディレクトリに集約した。
+  - Supabase 一式を `backend/supabase/` に移動し、DB 運用メモも `backend/docs/` に寄せた。
+  - GitHub Actions を `frontend/` 起点で動くように更新した。
+  - README、plan、rule の手順とディレクトリ表記を新構成に合わせて修正した。
+- **評価**：採用
+- **採用 / 不採用の理由**：ユーザーが意図した「ルートは薄く、実装は frontend/backend に寄せる」構成に揃えられ、今後の FE/BE 分担もしやすくなったため採用。
+
 ---
 
 ## Day 3（2026-05-26）

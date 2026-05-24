@@ -86,7 +86,7 @@ Curio Meet は、熱狂している人のショート動画を入口に、未知
 
 - [ ] 動くデモ（デプロイ済み URL を「デモ環境」欄に記載）
 - [ ] ソースコード（このリポに push 済み）
-- [ ] [`AI_USAGE_LOG.md`](./AI_USAGE_LOG.md)（AI 活用ログ、開発期間中の追記必須）
+- [ ] [`AI_USAGE_LOG.md`](./project-docs/AI_USAGE_LOG.md)（AI 活用ログ、開発期間中の追記必須）
 - [ ] プレゼン資料（PDF or Slides URL を記載）
 - [ ] デモ動画（任意・1 分以内・URL 記載）
 
@@ -117,10 +117,34 @@ Curio Meet は、熱狂している人のショート動画を入口に、未知
 ## セットアップ手順
 
 ```bash
-# ローカル起動例（適宜書き換え）
+# Frontend
+cd frontend
 npm install
 npm run dev
 ```
+
+### Docker で起動する
+
+`frontend/.env.example` をコピーして `frontend/.env` を作り、Supabase の URL / anon key を設定する。
+
+```bash
+cd frontend
+cp .env.example .env
+docker compose up --build
+```
+
+アプリは `http://localhost:5173` で開く。
+開発用コンテナは起動時に `npm ci` を実行して、`node_modules` ボリュームの依存ずれを避ける。
+
+本番相当の静的配信を確認したい場合:
+
+```bash
+cd frontend
+docker compose --profile prod up --build web-prod
+```
+
+こちらは `http://localhost:8080` で開く。
+`web-prod` は `.env` の `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` を build 時に埋め込む。
 
 ## 既知の問題 / 未実装機能（Day3 審査員向け）
 
@@ -141,7 +165,7 @@ npm run dev
 
 ## AI 活用ログ
 
-審査項目「AI 活用度」の根拠資料 → [`AI_USAGE_LOG.md`](./AI_USAGE_LOG.md)
+審査項目「AI 活用度」の根拠資料 → [`AI_USAGE_LOG.md`](./project-docs/AI_USAGE_LOG.md)
 
 開発期間中に最低 1 日 3 件以上の追記を目安に。
 
@@ -166,7 +190,7 @@ npm run dev
 5. 将来性
 6. 完成度
 7. プレゼンテーション
-8. AI 活用度（→ [`AI_USAGE_LOG.md`](./AI_USAGE_LOG.md) が根拠資料）
+8. AI 活用度（→ [`AI_USAGE_LOG.md`](./project-docs/AI_USAGE_LOG.md) が根拠資料）
 
 ## 謝辞（任意）
 

@@ -89,6 +89,7 @@ fix: 二重予約を Edge Function で拒否 (MVP-303)
 ### 2.3 PR 前のセルフチェック
 
 ```bash
+cd frontend
 npm install   # 初回 or package.json 変更時
 npm run build # エラーが出ないこと
 ```
@@ -121,6 +122,7 @@ npm run build # エラーが出ないこと
 
 ## 確認方法
 1. `npm run dev`
+   実行場所: `frontend/`
 2. （操作手順）
 
 ## スクリーンショット
@@ -208,7 +210,7 @@ git merge origin/main
 | 役割 | 例 |
 |------|-----|
 | PM | タスク割当、PR 優先度、デモ URL、提出物 |
-| FE | `src/`、Vercel、画面連携 |
+| FE | `frontend/src/`、Vercel、画面連携 |
 | BE / Infra | Supabase、Edge Functions、RLS、シード |
 | 全員 | plan.md 更新、AI ログ、レビュー |
 
@@ -230,7 +232,7 @@ git merge origin/main
 | ファイル | 用途 |
 |----------|------|
 | [plan.md](./plan.md) | タスク一覧・進捗チェック |
-| [README.md](./README.md) | セットアップ・デモ URL・提出ステータス |
+| [README.md](../README.md) | セットアップ・デモ URL・提出ステータス |
 | [AI_USAGE_LOG.md](./AI_USAGE_LOG.md) | AI 活用の記録（審査用） |
 
 ---

@@ -11,16 +11,18 @@
 | 観点 | 現状 | 設計書の想定 |
 |------|------|--------------|
 | フロント | **React + Vite + Tailwind**（`curio-meet-mock`） | React Native / Expo Web |
-| バックエンド | **なし**（`dummyData.js` + React `useState`） | Supabase（Auth / Postgres / Storage / Edge Functions） |
-| デプロイ | **未設定** | Vercel（main 連携・QR デモ URL） |
+| バックエンド | **Supabase Auth / Postgres 接続済み** | Supabase（Auth / Postgres / Edge Functions） |
+| メディア | **未設定** | Cloudflare R2（画像）/ Cloudflare Stream（動画）/ Cloudflare CDN |
+| デプロイ | **Vercel 公開済み** | Vercel（main 連携・QR デモ URL） |
 | UI 完成度 | **MVP 画面の UI モックは概ね揃っている** | 審査員が触れる「動く MVP」 |
 
 **結論**: 画面フローと TikTok 風 UX の**プロトタイプ**はできている。MVP として審査に耐えるには、**データ永続化・ビジネスロジック（ポイント／好奇心マップ）・デプロイ**が未着手の中心ギャップ。
 
 ### 1.1 ギャップ解消チェックリスト
 
-- [ ] フロントを Vercel にデプロイしデモ URL を公開
-- [ ] Supabase（DB / Auth / Storage）を接続
+- [x] フロントを Vercel にデプロイしデモ URL を公開
+- [x] Supabase（DB / Auth）を接続
+- [ ] Cloudflare R2 / Stream / CDN を接続（画像・動画アップロード）
 - [ ] 予約・ログ・ポイントを Edge Functions 経由に移行
 - [ ] 好奇心マップをユーザー操作で更新可能にする
 
@@ -137,7 +139,7 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 - [x] Random Box — 見送り（UI シェルは残して可）
 - [x] Following タブの実装 — 見送り（UI シェルは残して可）
 - [x] 商品券の実交換 — 見送り
-- [x] 動画必須 — 見送り（画像で可）
+- [ ] 動画必須 — MVP に追加（Cloudflare Stream で対応）（画像で可）
 - [x] Expo への全面移行 — 見送り（Post-MVP）
 
 ### 3.3 Should の MVP 内扱い
@@ -170,6 +172,8 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 - [x] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE`
 - [x] **MVP-004** — シードデータ投入（体験会 5 件以上、デモユーザー） `P1` `BE`
 - [x] **MVP-005** — Vercel プロジェクト連携、`npm run build`、main 自動デプロイ `P0` `Infra`
+- [x] **MVP-007** — Cloudflare アカウント設定・R2 バケット作成・CDN 有効化 `P0` `Infra`
+- [x] **MVP-008** — Cloudflare Stream 有効化・アップロード用 API トークン発行 `P0` `Infra`
 - [ ] **MVP-006** — README 更新（デモ URL・技術スタック・既知の問題）※ plan 外ファイルだが提出必須 `P1` `PM`
 
 ---
@@ -184,11 +188,11 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 2: 体験会・フィード（MVP Must）
 
-- [ ] **MVP-201** — `experiences` CRUD API（一覧・詳細。作成は認証ユーザー） `P0` `BE`
+- [x] **MVP-201** — `experiences` CRUD API（一覧・詳細。作成は認証ユーザー） `P0` `BE`
 - [ ] **MVP-202** — 体験に `category`（好奇心クラスタ）と `nicheScore` を付与 `P1` `BE`
-- [ ] **MVP-203** — Home: `experiences` を Supabase から取得してフィード表示 `P0` `FE`
-- [ ] **MVP-204** — 体験カバー画像: Storage アップロード + `mediaUrl` 表示（未設定時は現行グラデ fallback） `P1` `FE / Infra`
-- [ ] **MVP-205** — 投稿画面: フォーム送信 → DB insert → Home 先頭表示 `P0` `FE`
+- [x] **MVP-203** — Home: `experiences` を Supabase から取得してフィード表示 `P0` `FE`
+- [ ] **MVP-204** — メディアアップロード: 画像は Cloudflare R2、動画は Cloudflare Stream + `mediaUrl` 表示（未設定時は現行グラデ fallback） `P1` `FE / Infra`
+- [x] **MVP-205** — 投稿画面: フォーム送信 → DB insert → Home 先頭表示 `P0` `FE`
 - [ ] **MVP-206** — 投稿時 `pointReward` 算出（ニッチ度 or デフォルト 100） `P2` `BE`
 
 **現状ですでにできていること（追加実装不要）**

@@ -7,18 +7,35 @@ import ProfileScreen from './screens/ProfileScreen.jsx'
 import PostScreen from './screens/PostScreen.jsx'
 import LogScreen from './screens/LogScreen.jsx'
 
-import {
-  experiences as baseExperiences,
-  initialUser,
-  initialReservations,
-  initialLogs,
-} from './data/dummyData.js'
+import { initialReservations, initialLogs } from './data/dummyData.js'
 import { supabase } from './lib/supabase.js'
+
+function toUiExperience(row) {
+  return {
+    id: row.id,
+    title: row.title,
+    genre: row.category,
+    description: row.description,
+    location: row.location,
+    price: row.fee === 0 ? '初回無料' : `${row.fee}円`,
+    isFirstTimeFree: row.fee === 0,
+    pointReward: row.point_reward,
+    capacity: row.capacity,
+    reservedCount: row.reserved_count,
+    creator: row.users?.name ?? 'ユーザー',
+    creatorAvatar: '🌱',
+    isBeginnerFriendly: false,
+    isFriendOk: false,
+    startTime: row.scheduled_at,
+    thumbnailUrl: row.media_url,
+  }
+}
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('home')
   const [authUser, setAuthUser] = useState(null)
-  const [user, setUser] = useState(initialUser)
+  const [user, setUser] = useState({ name: '', points: 0, title: '' })
+  const [experiences, setExperiences] = useState([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -63,15 +80,21 @@ export default function App() {
     loadOrCreateUser()
   }, [authUser])
 
+  const fetchExperiences = async () => {
+    const { data } = await supabase
+      .from('experiences')
+      .select('*, users(name)')
+      .order('created_at', { ascending: false })
+    if (data) setExperiences(data.map(toUiExperience))
+  }
+
+  useEffect(() => {
+    fetchExperiences()
+  }, [])
+
   const [reservations, setReservations] = useState(initialReservations)
   const [logs, setLogs] = useState(initialLogs)
-  const [userPosts, setUserPosts] = useState([])
-  const [logTarget, setLogTarget] = useState(null) // reservation for S5
-
-  const experiences = useMemo(
-    () => [...userPosts, ...baseExperiences],
-    [userPosts],
-  )
+  const [logTarget, setLogTarget] = useState(null)
 
   const reservedIds = useMemo(
     () => new Set(reservations.map((r) => r.experienceId)),
@@ -120,8 +143,21 @@ export default function App() {
     setLogTarget(null)
   }
 
-  const handlePostSubmit = (post) => {
-    setUserPosts((prev) => [post, ...prev])
+  const handlePostSubmit = async (formData) => {
+    if (!authUser) return
+    await supabase.from('experiences').insert({
+      creator_id: authUser.id,
+      title: formData.title,
+      description: formData.description,
+      category: formData.genre,
+      location: formData.location,
+      fee: formData.isFirstTimeFree ? 0 : parseInt(formData.priceAmount || 0),
+      capacity: formData.capacity,
+      scheduled_at: formData.date && formData.time
+        ? new Date(`${formData.date}T${formData.time}`).toISOString()
+        : null,
+    })
+    await fetchExperiences()
   }
 
   const handlePostBackHome = () => {

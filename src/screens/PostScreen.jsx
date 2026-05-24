@@ -78,32 +78,13 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
     form.date &&
     form.time;
 
-  const handleSubmit = () => {
-    if (!valid) return;
-    const price = form.isFirstTimeFree
-      ? '初回無料'
-      : `${form.priceAmount || 0}円`;
-    const startTime = `${form.date} ${form.time}`;
-    const post = {
-      id: `user-post-${Date.now()}`,
-      title: form.title,
-      genre: form.genre,
-      description: form.description,
-      startTime,
-      location: form.location,
-      duration: form.duration,
-      price,
-      isFirstTimeFree: form.isFirstTimeFree,
-      isBeginnerFriendly: form.isBeginnerFriendly,
-      isFriendOk: form.isFriendOk,
-      capacity: form.capacity,
-      creator: '自分',
-      creatorAvatar: '🌱',
-      pointReward: 100,
-      reservedCount: 0,
-      thumbnailUrl: null,
-    };
-    onSubmit?.(post);
+  const [submitting, setSubmitting] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!valid || submitting) return;
+    setSubmitting(true);
+    await onSubmit?.(form);
+    setSubmitting(false);
     setSubmitted(true);
   };
 
@@ -354,11 +335,11 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
               </button>
               <button
                 type="button"
-                disabled={!valid}
+                disabled={!valid || submitting}
                 onClick={handleSubmit}
                 className="flex-1 h-12 rounded-md bg-accent text-black text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                投稿する
+                {submitting ? '投稿中…' : '投稿する'}
               </button>
             </div>
           </motion.div>

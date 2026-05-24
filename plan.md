@@ -166,8 +166,8 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 ### Phase 0: インフラ・基盤（MVP の前提）
 
 - [ ] **MVP-001** — Supabase プロジェクト作成、環境変数（`.env` / Vercel）設定 `P0` `Infra`
-- [ ] **MVP-002** — DB スキーマ作成（§13: users, experiences, reservations, experience_logs, curiosity_map_items, point_transactions） `P0` `BE`
-- [ ] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE`
+- [x] **MVP-002** — DB スキーマ作成（§13: users, experiences, reservations, experience_logs, curiosity_map_items, point_transactions） `P0` `BE`
+- [x] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE`
 - [ ] **MVP-004** — シードデータ投入（体験会 5 件以上、デモユーザー） `P1` `BE`
 - [ ] **MVP-005** — Vercel プロジェクト連携、`npm run build`、main 自動デプロイ `P0` `Infra`
 - [ ] **MVP-006** — README 更新（デモ URL・技術スタック・既知の問題）※ plan 外ファイルだが提出必須 `P1` `PM`

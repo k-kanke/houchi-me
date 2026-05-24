@@ -1,0 +1,88 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg-primary: #0A0A0A;
+  --bg-secondary: #141414;
+  --bg-elevated: #1C1C1C;
+  --accent: #FF5C00;
+  --accent-soft: rgba(255, 92, 0, 0.12);
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0A0;
+  --text-muted: #555555;
+  --border: #2A2A2A;
+  --success: #00E5A0;
+}
+
+html, body {
+  background: #000;
+  color: var(--text-primary);
+  font-family: 'Noto Sans JP', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* PCで見るときに左右を暗くし、デバイスを中央に表示 */
+#root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100dvh;
+  background: radial-gradient(circle at 50% 0%, #111 0%, #000 60%);
+}
+
+@media (min-width: 430px) {
+  #root {
+    min-height: 100vh;
+  }
+}
+
+.device-frame {
+  position: relative;
+  width: 390px;
+  height: 100dvh;
+  background: var(--bg-primary);
+  overflow: hidden;
+  box-shadow: 0 0 80px rgba(255, 92, 0, 0.06), 0 0 0 1px #1a1a1a;
+}
+
+@media (min-width: 430px) {
+  .device-frame {
+    margin: 24px 0;
+    height: 844px;
+    border-radius: 44px;
+    box-shadow:
+      0 0 0 10px #0a0a0a,
+      0 0 0 12px #1a1a1a,
+      0 30px 80px rgba(0, 0, 0, 0.8),
+      0 0 120px rgba(255, 92, 0, 0.08);
+  }
+}
+
+/* スクロールバー非表示 */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* スナップフィード */
+.feed-snap {
+  scroll-snap-type: y mandatory;
+  -webkit-overflow-scrolling: touch;
+}
+.feed-snap > * {
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+}
+
+/* 入力欄のオートフィル背景上書き */
+input:-webkit-autofill,
+textarea:-webkit-autofill,
+select:-webkit-autofill {
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-elevated) inset !important;
+  -webkit-text-fill-color: #fff !important;
+  caret-color: #fff;
+}
+
+/* ユーティリティ */
+.font-display { font-family: 'Bebas Neue', 'Noto Sans JP', sans-serif; letter-spacing: 0.04em; }
+.font-mono { font-family: 'Space Mono', monospace; }

@@ -146,19 +146,36 @@ export default function ExperienceCard({
       onClick={handleRootClick}
     >
       {/* 1. フルブリード背景 */}
-      <div
-        className="absolute inset-0"
-        style={{ background: visual.gradient }}
-      />
-
-      {/* 巨大絵文字（浮遊） */}
-      <motion.div
-        className="text-[260px] opacity-25 select-none absolute top-[18%] left-1/2 -translate-x-1/2 leading-none pointer-events-none"
-        animate={{ y: [0, -12, 0], rotate: [0, 2, -2, 0] }}
-        transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
-      >
-        {visual.emoji}
-      </motion.div>
+      {experience.thumbnailUrl ? (
+        experience.thumbnailUrl.includes('iframe.cloudflarestream.com') ? (
+          <iframe
+            src={`${experience.thumbnailUrl}?autoplay=true&muted=true&loop=true&controls=false`}
+            className="absolute inset-0 w-full h-full"
+            allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        ) : (
+          <img
+            src={experience.thumbnailUrl}
+            className="absolute inset-0 w-full h-full object-cover"
+            alt={experience.title}
+          />
+        )
+      ) : (
+        <>
+          <div
+            className="absolute inset-0"
+            style={{ background: visual.gradient }}
+          />
+          <motion.div
+            className="text-[260px] opacity-25 select-none absolute top-[18%] left-1/2 -translate-x-1/2 leading-none pointer-events-none"
+            animate={{ y: [0, -12, 0], rotate: [0, 2, -2, 0] }}
+            transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut' }}
+          >
+            {visual.emoji}
+          </motion.div>
+        </>
+      )}
 
       {/* 暗化グラデ：上 */}
       <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent pointer-events-none" />

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../components/Button';
 import { genres } from '../data/dummyData';
+import { supabase } from '../lib/supabase';
 
 const DURATION_OPTIONS = ['30分', '60分', '90分', '120分', 'その他'];
 
@@ -67,6 +68,11 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
     thumbnail: null,
   });
   const [submitted, setSubmitted] = useState(false);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [mediaType, setMediaType] = useState(null); // 'image' | 'video'
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef(null);
 
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
 
@@ -78,18 +84,41 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
     form.date &&
     form.time;
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const type = file.type.startsWith('video/') ? 'video' : 'image';
+    setMediaFile(file);
+    setMediaType(type);
+    setMediaPreview(URL.createObjectURL(file));
+  };
+
+  const uploadMedia = async () => {
+    if (!mediaFile) return null;
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append('file', mediaFile);
+      const { data, error } = await supabase.functions.invoke('upload-media', { body });
+      if (error || !data?.mediaUrl) return null;
+      return data.mediaUrl;
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const [submitting, setSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!valid || submitting) return;
     setSubmitting(true);
-    await onSubmit?.(form);
+    const mediaUrl = await uploadMedia();
+    await onSubmit?.({ ...form, mediaUrl });
     setSubmitting(false);
     setSubmitted(true);
   };
 
-  const toggleThumbnail = () =>
-    update({ thumbnail: form.thumbnail ? null : 'placeholder' });
+  const handleCoverClick = () => fileInputRef.current?.click();
 
   const decCapacity = () =>
     update({ capacity: Math.max(1, form.capacity - 1) });
@@ -122,25 +151,29 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
             <div className="flex gap-3 px-4 pt-4">
               <button
                 type="button"
-                onClick={toggleThumbnail}
-                className="w-28 aspect-[3/4] rounded-xl border border-white/15 bg-bg-secondary flex flex-col items-center justify-center cursor-pointer hover:border-accent transition-colors shrink-0"
+                onClick={handleCoverClick}
+                className="w-28 aspect-[3/4] rounded-xl border border-white/15 bg-bg-secondary flex flex-col items-center justify-center cursor-pointer hover:border-accent transition-colors shrink-0 overflow-hidden relative"
               >
-                {form.thumbnail ? (
-                  <>
-                    <span className="text-4xl">✅</span>
-                    <span className="text-[10px] text-white/55 mt-1.5">
-                      設定済
-                    </span>
-                  </>
+                {mediaPreview ? (
+                  mediaType === 'video' ? (
+                    <video src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" muted />
+                  ) : (
+                    <img src={mediaPreview} className="absolute inset-0 w-full h-full object-cover" alt="cover" />
+                  )
                 ) : (
                   <>
                     <span className="text-4xl">📸</span>
-                    <span className="text-[10px] text-white/55 mt-1.5">
-                      カバー
-                    </span>
+                    <span className="text-[10px] text-white/55 mt-1.5">カバー</span>
                   </>
                 )}
               </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,video/*"
+                className="hidden"
+                onChange={handleFileSelect}
+              />
 
               <div className="flex-1 flex flex-col">
                 <span className="text-[10px] text-white/55 font-bold tracking-wider uppercase">
@@ -339,7 +372,7 @@ export default function PostScreen({ onSubmit, onBackToHome }) {
                 onClick={handleSubmit}
                 className="flex-1 h-12 rounded-md bg-accent text-black text-sm font-bold disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
               >
-                {submitting ? '投稿中…' : '投稿する'}
+                {uploading ? 'アップロード中…' : submitting ? '投稿中…' : '投稿する'}
               </button>
             </div>
           </motion.div>

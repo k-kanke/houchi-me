@@ -189,6 +189,7 @@ export default function App() {
       scheduled_at: formData.date && formData.time
         ? new Date(`${formData.date}T${formData.time}`).toISOString()
         : null,
+      media_url: formData.mediaUrl ?? null,
     })
     await fetchExperiences()
   }

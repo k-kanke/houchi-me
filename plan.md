@@ -176,9 +176,9 @@ Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフ
 
 ### Phase 1: 認証・ユーザー（MVP）
 
-- [ ] **MVP-101** — Supabase Auth 導入（匿名ログイン or メールなしデモ用 1 アカウント） `P1` `BE`
-- [ ] **MVP-102** — `users` 行の作成・取得（プロフィール: name, avatar, points, title） `P1` `BE / FE`
-- [ ] **MVP-103** — フロント: `dummyData.initialUser` を API 取得に置き換え `P1` `FE`
+- [x] **MVP-101** — Supabase Auth 導入（匿名ログイン or メール��しデモ用 1 アカウント） `P1` `BE`
+- [x] **MVP-102** — `users` 行の作成・取得��プロフィール: name, avatar, points, title） `P1` `BE / FE`
+- [x] **MVP-103** — フロ���ト: `dummyData.initialUser` を API 取得に置き換え `P1` `FE`
 
 ---
 

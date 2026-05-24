@@ -37,6 +37,32 @@ export default function App() {
 
     return () => subscription.unsubscribe()
   }, [])
+
+  useEffect(() => {
+    if (!authUser) return
+
+    const loadOrCreateUser = async () => {
+      const { data } = await supabase
+        .from('users')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+
+      if (data) {
+        setUser(data)
+      } else {
+        const { data: created } = await supabase
+          .from('users')
+          .insert({ id: authUser.id })
+          .select()
+          .single()
+        if (created) setUser(created)
+      }
+    }
+
+    loadOrCreateUser()
+  }, [authUser])
+
   const [reservations, setReservations] = useState(initialReservations)
   const [logs, setLogs] = useState(initialLogs)
   const [userPosts, setUserPosts] = useState([])

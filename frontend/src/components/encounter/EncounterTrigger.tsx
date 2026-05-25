@@ -8,7 +8,13 @@ const WILD_AVATARS = [
   { name: 'Echo', color: '#4ff5e7' },
 ];
 
-export default function EncounterTrigger({ embedded = false }: { embedded?: boolean }) {
+export default function EncounterTrigger({
+  embedded = false,
+  compact = false,
+}: {
+  embedded?: boolean;
+  compact?: boolean;
+}) {
   const encounter = useAppStore((s) => s.encounter);
   const clone = useAppStore((s) => s.clone);
   const topics = useAppStore((s) => s.topics);
@@ -53,7 +59,9 @@ export default function EncounterTrigger({ embedded = false }: { embedded?: bool
     <button
       onClick={handleStart}
       disabled={loading}
-      className={`flex w-full flex-col items-center gap-0.5 rounded-xl border border-white/[0.08] px-3 py-2.5 text-center transition-colors hover:border-[var(--color-neon-pink)]/35 hover:bg-[var(--color-neon-pink)]/8 disabled:opacity-60 ${
+      className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl border border-white/[0.08] text-center transition-colors hover:border-[var(--color-neon-pink)]/35 hover:bg-[var(--color-neon-pink)]/8 disabled:opacity-60 ${
+        compact ? 'w-full px-2 py-2' : 'w-full px-3 py-2.5'
+      } ${
         embedded
           ? 'pointer-events-auto'
           : 'pointer-events-auto rounded-full shadow-[0_10px_30px_rgba(0,0,0,0.38)]'
@@ -72,11 +80,15 @@ export default function EncounterTrigger({ embedded = false }: { embedded?: bool
       <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--color-neon-pink)]">
         Clone → Others
       </span>
-      <span className="text-[13px] font-medium text-white/92">
-        {loading ? '遭遇を準備中…' : '他クローンと出会わせる'}
+      <span
+        className={`font-medium text-white/92 ${compact ? 'text-[11px] leading-tight' : 'text-[13px]'}`}
+      >
+        {loading ? '準備中…' : '他クローンと出会わせる'}
       </span>
-      <span className="text-[10px] text-white/45">
-        Sage・Echo などと話し始める
+      <span
+        className={`text-white/45 ${compact ? 'text-[9px] leading-snug' : 'text-[10px]'}`}
+      >
+        {compact ? 'Sage・Echo など' : 'Sage・Echo などと話し始める'}
       </span>
     </button>
   );

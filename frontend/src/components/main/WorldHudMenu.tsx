@@ -16,30 +16,52 @@ function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
   const chatPanelOpen = useAppStore((s) => s.chatPanelOpen);
   const setChatPanelOpen = useAppStore((s) => s.setChatPanelOpen);
   const controlMode = useAppStore((s) => s.controlMode);
+  const encounter = useAppStore((s) => s.encounter);
+  const clone = useAppStore((s) => s.clone);
+  const showEncounterBtn = showChatEntry && !encounter && !!clone;
+
+  const chatButton = (
+    <button
+      type="button"
+      onClick={() => setChatPanelOpen(true)}
+      className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl border text-center transition-colors ${
+        showEncounterBtn ? 'w-full px-2 py-2' : 'w-full px-3 py-2.5'
+      } ${
+        chatPanelOpen
+          ? 'border-[var(--color-neon-cyan)]/40 bg-[var(--color-neon-cyan)]/12'
+          : 'border-white/[0.1] bg-white/[0.04] hover:border-[var(--color-neon-cyan)]/30 hover:bg-white/[0.07]'
+      }`}
+      aria-label="自分のクローンとチャットする"
+    >
+      <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--color-neon-cyan)]">
+        You ↔ Clone
+      </span>
+      <span
+        className={`font-medium text-white/92 ${
+          showEncounterBtn ? 'text-[11px] leading-tight' : 'text-[13px]'
+        }`}
+      >
+        自分のクローンと会話
+      </span>
+      <span
+        className={`text-white/45 ${showEncounterBtn ? 'text-[9px] leading-snug' : 'text-[10px]'}`}
+      >
+        {showEncounterBtn ? '質問・深掘り' : 'あなたが直接、質問・深掘りする'}
+      </span>
+    </button>
+  );
 
   return (
     <div className="space-y-3">
       {showChatEntry ? (
-        <button
-          type="button"
-          onClick={() => setChatPanelOpen(true)}
-          className={`flex w-full flex-col items-center gap-0.5 rounded-xl border px-3 py-2.5 text-center transition-colors ${
-            chatPanelOpen
-              ? 'border-[var(--color-neon-cyan)]/40 bg-[var(--color-neon-cyan)]/12'
-              : 'border-white/[0.1] bg-white/[0.04] hover:border-[var(--color-neon-cyan)]/30 hover:bg-white/[0.07]'
-          }`}
-          aria-label="自分のクローンとチャットする"
-        >
-          <span className="font-mono text-[9px] font-bold uppercase tracking-[0.16em] text-[var(--color-neon-cyan)]">
-            You ↔ Clone
-          </span>
-          <span className="text-[13px] font-medium text-white/92">
-            自分のクローンと会話
-          </span>
-          <span className="text-[10px] text-white/45">
-            あなたが直接、質問・深掘りする
-          </span>
-        </button>
+        showEncounterBtn ? (
+          <div className="grid grid-cols-2 gap-2">
+            {chatButton}
+            <EncounterTrigger embedded compact />
+          </div>
+        ) : (
+          chatButton
+        )
       ) : null}
 
       <CameraModeToggle embedded />
@@ -50,7 +72,7 @@ function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
 
       {controlMode === 'manual' ? <ControlPad embedded /> : null}
 
-      <EncounterTrigger embedded />
+      {!showChatEntry ? <EncounterTrigger embedded /> : null}
     </div>
   );
 }

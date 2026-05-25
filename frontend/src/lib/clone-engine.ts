@@ -152,6 +152,38 @@ const REASONING_KEYWORDS = ['なぜ', 'どうして', 'why', '理由'];
 const SELF_KEYWORDS = ['自分', '私', 'わたし', '俺', 'me'];
 const MORE_KEYWORDS = ['もっと', '他', 'ほか', '別'];
 
+const isSupabaseConfigured =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+type CloneApiFunctionName = 'simulate-clone-day' | 'clone-chat';
+
+type CloneApiValidator<T> = (value: unknown) => value is T;
+
+export async function invokeCloneApi<T>(
+  functionName: CloneApiFunctionName,
+  body: Record<string, unknown>,
+  validate: CloneApiValidator<T>,
+): Promise<T> {
+  if (!isSupabaseConfigured) {
+    throw new Error(`${functionName} skipped: Supabase is not configured`);
+  }
+
+  const { data, error } = await getSupabase().functions.invoke(functionName, {
+    body,
+  });
+
+  if (error) {
+    throw new Error(`${functionName} failed: ${error.message}`);
+  }
+
+  if (!validate(data)) {
+    throw new Error(`${functionName} returned an invalid payload`);
+  }
+
+  return data;
+}
+
 function pickTopicSeed(clone: Clone, history: Topic[]): MockTopicSeed {
   const usedTitles = new Set(history.map((t) => t.title));
   const likes = clone.likes.map((s) => s.toLowerCase());
@@ -192,7 +224,10 @@ function chunkText(text: string, size = 14): string[] {
   return chunks.length > 0 ? chunks : [''];
 }
 
-function isTopicShape(value: unknown): value is Omit<Topic, 'id' | 'dateKey' | 'createdAt'> & Partial<Topic> {
+type TopicApiPayload = Omit<Topic, 'id' | 'dateKey' | 'createdAt'> &
+  Partial<Pick<Topic, 'id' | 'dateKey' | 'createdAt'>>;
+
+function isTopicShape(value: unknown): value is TopicApiPayload {
   if (!value || typeof value !== 'object') return false;
   const topic = value as Record<string, unknown>;
   return (
@@ -201,6 +236,16 @@ function isTopicShape(value: unknown): value is Omit<Topic, 'id' | 'dateKey' | '
     Array.isArray(topic.explorationPath) &&
     Array.isArray(topic.relatedConcepts)
   );
+}
+
+interface ChatApiPayload {
+  reply: string;
+}
+
+function isChatShape(value: unknown): value is ChatApiPayload {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Record<string, unknown>;
+  return typeof payload.reply === 'string' && payload.reply.trim().length > 0;
 }
 
 export class LLMMockImpl implements CloneEngine {
@@ -254,17 +299,11 @@ export class SupabaseEdgeFunctionImpl implements CloneEngine {
 
   async generateTodaysTopic(clone: Clone, _history: Topic[]): Promise<Topic> {
     void _history;
-    const { data, error } = await getSupabase().functions.invoke('simulate-clone-day', {
-      body: { cloneId: clone.id },
-    });
-
-    if (error) {
-      throw new Error(`simulate-clone-day failed: ${error.message}`);
-    }
-
-    if (!isTopicShape(data)) {
-      throw new Error('simulate-clone-day returned an invalid topic payload');
-    }
+    const data = await invokeCloneApi(
+      'simulate-clone-day',
+      { cloneId: clone.id },
+      isTopicShape,
+    );
 
     return {
       id: typeof data.id === 'string' ? data.id : uuid(),
@@ -278,33 +317,58 @@ export class SupabaseEdgeFunctionImpl implements CloneEngine {
   }
 
   async *chatStream(clone: Clone, _history: Message[], userText: string): AsyncIterable<string> {
-    const { data, error } = await getSupabase().functions.invoke('clone-chat', {
-      body: {
+    void _history;
+    const data = await invokeCloneApi(
+      'clone-chat',
+      {
         cloneId: clone.id,
         userText,
       },
-    });
+      isChatShape,
+    );
 
-    if (error) {
-      throw new Error(`clone-chat failed: ${error.message}`);
-    }
-
-    const reply = typeof data?.reply === 'string' ? data.reply : '';
-    if (!reply) {
-      throw new Error('clone-chat returned an empty reply');
-    }
-
-    for (const chunk of chunkText(reply)) {
+    for (const chunk of chunkText(data.reply)) {
       yield chunk;
       await delay(18);
     }
   }
 }
 
-const isSupabaseConfigured =
-  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
-  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+class FallbackCloneEngine implements CloneEngine {
+  readonly persistsMessages = true;
+
+  constructor(
+    private readonly primary: CloneEngine,
+    private readonly fallback: CloneEngine,
+  ) {}
+
+  async generateTodaysTopic(clone: Clone, history: Topic[]): Promise<Topic> {
+    try {
+      return await this.primary.generateTodaysTopic(clone, history);
+    } catch (error) {
+      console.warn('Falling back to dummy topic generation:', error);
+      return this.fallback.generateTodaysTopic(clone, history);
+    }
+  }
+
+  async *chatStream(
+    clone: Clone,
+    history: Message[],
+    userText: string,
+  ): AsyncIterable<string> {
+    try {
+      for await (const chunk of this.primary.chatStream(clone, history, userText)) {
+        yield chunk;
+      }
+    } catch (error) {
+      console.warn('Falling back to dummy chat response:', error);
+      for await (const chunk of this.fallback.chatStream(clone, history, userText)) {
+        yield chunk;
+      }
+    }
+  }
+}
 
 export const engine: CloneEngine = isSupabaseConfigured
-  ? new SupabaseEdgeFunctionImpl()
+  ? new FallbackCloneEngine(new SupabaseEdgeFunctionImpl(), new LLMMockImpl())
   : new LLMMockImpl();

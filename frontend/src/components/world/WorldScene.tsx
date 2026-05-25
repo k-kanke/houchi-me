@@ -81,10 +81,8 @@ export default function WorldScene() {
   const setNearestRoomId = useAppStore((s) => s.setNearestRoomId);
   const nearestRoomIdRef = useRef<string | null>(null);
 
-  // 部屋アバターとの会話進行（吹き出しは下部の ConversationModule に表示）
+  // 部屋アバターとの会話進行（ConversationModule が管理）
   const roomConversationId = useAppStore((s) => s.roomConversationId);
-  const setRoomConversationId = useAppStore((s) => s.setRoomConversationId);
-  const setConvTurnIdx = useAppStore((s) => s.setConvTurnIdx);
 
   // 場にいる部屋アバターのローテーション（最大 3、60 秒ごとに入れ替わり）
   const activeAgentRoomIds = useAppStore((s) => s.activeAgentRoomIds);
@@ -250,31 +248,6 @@ export default function WorldScene() {
     return () => intervals.forEach(clearInterval);
   }, [activeRooms]);
 
-  // 部屋会話：会話 ID が立ったらターン進行を開始、最後まで進んだら自動終了
-  useEffect(() => {
-    if (!roomConversationId) {
-      setConvTurnIdx(0);
-      return;
-    }
-    const room = activeRooms.find((r) => r.id === roomConversationId);
-    if (!room || room.dialogue.length === 0) return;
-    setConvTurnIdx(0);
-
-    const timer = setInterval(() => {
-      setConvTurnIdx((prev) => {
-        const next = prev + 1;
-        if (next >= room.dialogue.length) {
-          // 全ターン消化したら少し余韻を残して自動終了
-          window.setTimeout(() => setRoomConversationId(null), 2500);
-          clearInterval(timer);
-          return prev;
-        }
-        return next;
-      });
-    }, 3800);
-
-    return () => clearInterval(timer);
-  }, [roomConversationId, activeRooms, setRoomConversationId]);
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime;

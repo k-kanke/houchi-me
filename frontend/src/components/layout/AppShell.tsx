@@ -69,7 +69,7 @@ export default function AppShell() {
             <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
               <EncounterOverlay />
             </div>
-            <div className="absolute bottom-20 right-6">
+            <div className="absolute bottom-6 left-6">
               <EncounterTrigger />
             </div>
           </div>

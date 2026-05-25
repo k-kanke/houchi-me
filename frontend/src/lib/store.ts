@@ -55,6 +55,21 @@ interface EncounterState {
   isStreaming: boolean;
 }
 
+interface RoomChatMessage {
+  role: 'agent' | 'mira';
+  content: string;
+}
+
+interface RoomChatState {
+  sessionId: string;
+  roomId: string;
+  avatarName: string;
+  roomColor: string;
+  messages: RoomChatMessage[];
+  isLoading: boolean;
+  isStreaming: boolean;
+}
+
 interface AppState {
   clone: Clone | null;
   topics: Topic[];
@@ -78,6 +93,7 @@ interface AppState {
   activeAgentRoomIds: string[]; // 場にいる部屋アバターの id（最大 3）
   roomResidents: Record<string, number>; // roomId -> 現在の roster index
   encounter: EncounterState | null;
+  roomChat: RoomChatState | null;
 
   setClone: (clone: Clone | null) => void;
   setTopics: (topics: Topic[]) => void;
@@ -108,6 +124,12 @@ interface AppState {
   finalizeEncounterStream: () => void;
   endEncounter: () => void;
   setEncounterLoading: (loading: boolean) => void;
+  startRoomChat: (sessionId: string, roomId: string, avatarName: string, roomColor: string, firstMessage: string) => void;
+  addRoomChatMessage: (role: 'agent' | 'mira') => void;
+  appendRoomChatStream: (text: string) => void;
+  finalizeRoomChatStream: () => void;
+  endRoomChat: () => void;
+  setRoomChatLoading: (loading: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -133,6 +155,7 @@ export const useAppStore = create<AppState>((set) => ({
   activeAgentRoomIds: [],
   roomResidents: {},
   encounter: null,
+  roomChat: null,
 
   setClone: (clone) => set({ clone }),
   setTopics: (topics) => set({ topics }),
@@ -247,5 +270,58 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => {
       if (!s.encounter) return s;
       return { encounter: { ...s.encounter, isLoading: loading } };
+    }),
+
+  startRoomChat: (sessionId, roomId, avatarName, roomColor, firstMessage) =>
+    set({
+      roomConversationId: roomId,
+      roomChat: {
+        sessionId,
+        roomId,
+        avatarName,
+        roomColor,
+        messages: [{ role: 'agent', content: firstMessage }],
+        isLoading: false,
+        isStreaming: false,
+      },
+    }),
+
+  addRoomChatMessage: (role) =>
+    set((s) => {
+      if (!s.roomChat) return s;
+      return {
+        roomChat: {
+          ...s.roomChat,
+          messages: [...s.roomChat.messages, { role, content: '' }],
+        },
+      };
+    }),
+
+  appendRoomChatStream: (text) =>
+    set((s) => {
+      if (!s.roomChat) return s;
+      const msgs = s.roomChat.messages;
+      if (msgs.length === 0) return s;
+      const last = msgs[msgs.length - 1];
+      return {
+        roomChat: {
+          ...s.roomChat,
+          messages: [...msgs.slice(0, -1), { ...last, content: last.content + text }],
+        },
+      };
+    }),
+
+  finalizeRoomChatStream: () =>
+    set((s) => {
+      if (!s.roomChat) return s;
+      return { roomChat: { ...s.roomChat, isStreaming: false } };
+    }),
+
+  endRoomChat: () => set({ roomChat: null, roomConversationId: null }),
+
+  setRoomChatLoading: (loading) =>
+    set((s) => {
+      if (!s.roomChat) return s;
+      return { roomChat: { ...s.roomChat, isLoading: loading } };
     }),
 }));

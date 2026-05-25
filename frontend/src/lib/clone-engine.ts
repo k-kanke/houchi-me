@@ -1,5 +1,6 @@
 import { getSupabase } from '@/lib/supabase';
-import { uuid } from '@/lib/util';
+import { storage } from '@/lib/storage';
+import { nowIso, uuid } from '@/lib/util';
 import type { Clone, Message, Topic } from '@/types';
 
 export interface CloneEngine {
@@ -362,8 +363,26 @@ class FallbackCloneEngine implements CloneEngine {
       }
     } catch (error) {
       console.warn('Falling back to dummy chat response:', error);
+      let reply = '';
       for await (const chunk of this.fallback.chatStream(clone, history, userText)) {
+        reply += chunk;
         yield chunk;
+      }
+      try {
+        await storage.appendMessage({
+          id: uuid(),
+          role: 'user',
+          text: userText,
+          createdAt: nowIso(),
+        });
+        await storage.appendMessage({
+          id: uuid(),
+          role: 'clone',
+          text: reply,
+          createdAt: nowIso(),
+        });
+      } catch (persistError) {
+        console.warn('Failed to persist fallback chat response:', persistError);
       }
     }
   }

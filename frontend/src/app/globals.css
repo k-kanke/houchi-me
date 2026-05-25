@@ -10,8 +10,8 @@
   --color-ink-200: #c8c6e0;
   --color-ink-400: #8b8aa8;
   --color-ink-700: #2a2740;
-  --font-sans: var(--font-sans-jp), var(--font-inter), -apple-system, system-ui, sans-serif;
-  --font-mono: var(--font-mono), 'JetBrains Mono', monospace;
+  --font-sans: "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: "SFMono-Regular", "JetBrains Mono", "Cascadia Code", "Menlo", "Monaco", monospace;
 }
 
 :root {

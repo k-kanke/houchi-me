@@ -15,7 +15,7 @@
 | 新プロダクト | 放置me — クローンAI × 3D「叡智の図書館」× 1日1Topic |
 | モック | `index.html`（Three.js r128、単一HTML、Clone OS v2 UI） |
 | 参照実装 | 旧 `houchi-me/`（Next.js 16 + R3F + Zustand + LocalStorage の MVP）を `frontend/` 本体に昇格し、`houchi-me/` は削除（2026-05-25） |
-| 実装方針 | **houchi-me 系の Next.js 16 + R3F 構成を本線**として継続。データ・AI・認証は Supabase + Claude API（Next.js API Route / Edge Function 経由）で抽象層 1 行差し替えで本番化 |
+| 実装方針 | **houchi-me 系の Next.js 16 + R3F 構成を本線**として継続。データ・AI・認証は Supabase + Gemini + Edge Functions で抽象層を切って本番化 |
 
 ### 0.1 モックから移植するもの（チェックリスト）
 
@@ -39,13 +39,13 @@
 | クローン操作 | **観察モードのみ** | 自動巡回。WASD / クリック移動は未（要再導入） |
 | クローン作成 | **LocalStorage（抽象化済み）** | `frontend/src/app/onboarding/page.tsx`, `frontend/src/lib/storage.ts` |
 | Topic / チャット | **モック LLM（抽象化済み）** | `frontend/src/lib/clone-engine.ts`（`LLMMockImpl`） |
-| Supabase / AI | **未接続（手順は確立）** | `frontend/NEXT_STEPS.md`（A: Claude / B: Supabase）、`backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql` |
+| Supabase / AI | **一部接続済み（Gemini Edge Functions を実装）** | `frontend/NEXT_STEPS.md`、`backend/supabase/functions/`, `backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql` |
 | DB スキーマ | **houchi-me 用に置換済み** | `profiles` / `clones` / `topics` / `messages` / `feedback` + RLS + `handle_new_user` トリガ |
-| **Claude API / エージェント LLM** | **未着手（差し替え 1 行で完了）** | `frontend/src/lib/clone-engine.ts` 末尾 `export const engine` を `ClaudeApiImpl` へ |
-| デプロイ | `vercel.json`（framework=nextjs）・Dockerfile/docker-compose 更新済み | `frontend/vercel.json`, `frontend/Dockerfile`, `frontend/docker-compose.yml` |
+| **Gemini / エージェント LLM** | **Edge Functions 実装済み・要安定化** | `frontend/src/lib/clone-engine.ts` の `SupabaseEdgeFunctionImpl` と `backend/supabase/functions/` |
+| デプロイ | `vercel.json`（framework=nextjs）更新済み | `frontend/vercel.json` |
 | CI / Preview | `cache-dependency-path: frontend/package-lock.json` のまま動作、env を `NEXT_PUBLIC_SUPABASE_*` に更新 | `.github/workflows/ci.yml`, `cd.yml` |
 
-**まだ Must として未達のもの**: Supabase 接続（`SupabaseImpl` の本体実装）、**Claude API によるクローンエージェント**（Topic・チャット・1日シミュレーション）、毎日の質問、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A 系で Vite に積んでいた WASD 操作・興味マップ画面・タイムライン画面は再移植が必要。**
+**まだ Must として未達のもの**: Supabase local / cloud 上での実動確認、毎日の質問 UI、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A 系で Vite に積んでいた WASD 操作・興味マップ画面・タイムライン画面は再移植が必要。**
 
 ### 0.3.5 Milestone C — 実験 UI リデザイン（experiment ブランチ・2026-05-25）
 
@@ -258,10 +258,10 @@ flowchart TB
 | 3D | **Three.js + @react-three/fiber + @react-three/drei + @react-three/postprocessing** | 旧 Vite の vanilla Three 実装は撤去、R3F に統一 |
 | 状態管理 / UI | **Zustand**、Tailwind CSS v4（`@theme inline` でカラー/フォントトークン） | `frontend/src/lib/store.ts`、`src/app/globals.css` |
 | 永続化 | `Storage` インターフェース（`LocalStorageImpl` 既定 / `SupabaseImpl` 差し替え） | `frontend/src/lib/storage.ts` — 末尾 1 行で切替 |
-| LLM | `CloneEngine` インターフェース（`LLMMockImpl` 既定 / `ClaudeApiImpl` 差し替え） | `frontend/src/lib/clone-engine.ts` — 末尾 1 行で切替 |
+| LLM | `CloneEngine` インターフェース（`LLMMockImpl` 既定 / `SupabaseEdgeFunctionImpl` 差し替え） | `frontend/src/lib/clone-engine.ts` — Supabase 設定時に Edge Functions 経由へ切替 |
 | バック | Supabase（Auth / DB / Realtime / Edge Functions） | 旧 Curio スキーマは削除、`profiles/clones/topics/messages/feedback` に置換済み |
-| AI | **Anthropic Claude API**（`claude-opus-4-7` 等）— Next.js API Route 経由でキーを秘匿 | 手順は [`frontend/NEXT_STEPS.md`](../frontend/NEXT_STEPS.md) §A。Edge Function 経由も可。`ANTHROPIC_API_KEY` を Vercel/Supabase Secret |
-| インフラ | Vercel（root=`frontend`、Next.js auto-detect）+ Supabase Cloud + 任意 Docker | `frontend/Dockerfile`（multi-stage: dev / build / production の next start） |
+| AI | **Google Gemini API**（`models/gemini-2.5-flash` 既定）— Supabase Edge Functions 経由でキーを秘匿 | `GEMINI_API_KEY` は Supabase Edge Functions Secret のみ。frontend には置かない |
+| インフラ | Vercel（root=`frontend`、Next.js auto-detect）+ Supabase Cloud | `frontend/vercel.json` |
 
 ### 1.2 画面ルーティング（MVP）
 
@@ -329,14 +329,14 @@ RLS は全テーブルで有効、`auth.uid()` 本人のみ。`auth.users` INSER
 
 ## 3. AI / バックエンドジョブ（Gemini・エージェント）
 
-### 3.1 方針（2026-05-25 改訂 — houchi-me 参照実装に整合）
+### 3.1 方針（2026-05-25 改訂）
 
-- **プロバイダ**: **Anthropic Claude API**（`claude-opus-4-7` 等）。チームの当初方針 (Gemini) から houchi-me 参照実装に合わせて変更。
-- **実行場所**: **Next.js API Route**（`frontend/src/app/api/*`）を本線。Supabase **Edge Functions**（Deno）からの呼び出しも併用可（特に重いバッチ系は Edge）。
-- **抽象境界**: フロントは `frontend/src/lib/clone-engine.ts` の `CloneEngine` インターフェース経由でのみ LLM を叩く。`LLMMockImpl`（既定）→ `ClaudeApiImpl`（本番）の差し替えは末尾 1 行。
+- **プロバイダ**: **Google Gemini API**（`models/gemini-2.5-flash` 既定）。
+- **実行場所**: Supabase **Edge Functions**（Deno）を本線。frontend からは `supabase.functions.invoke()` で呼ぶ。
+- **抽象境界**: フロントは `frontend/src/lib/clone-engine.ts` の `CloneEngine` インターフェース経由でのみ LLM を叩く。`LLMMockImpl`（既定）→ `SupabaseEdgeFunctionImpl`（本番）の切替。
 - **エージェント像**: 単発 completion ではなく、**クローン人格（system）+ 記憶コンテキスト（user/data）+ タスク別指示** で「放置中に探索しているクローン」として振る舞う
 - **モック**: `frontend/src/lib/clone-engine.ts` 内の `MOCK_TOPIC_SEEDS` / `LLMMockImpl` がそのままフォールバック。`hochiDummy.js` は廃止。
-- **手順**: [`frontend/NEXT_STEPS.md`](../frontend/NEXT_STEPS.md) §A に Claude 接続、§B に Supabase 接続の具体手順あり。
+- **Secret 方針**: `GEMINI_API_KEY` は Supabase Edge Functions Secret のみ。frontend / Vercel の公開環境変数には置かない。
 
 ```mermaid
 flowchart LR
@@ -356,7 +356,7 @@ flowchart LR
 | 関数 | タスク ID | 担当 | トリガー | 出力 |
 |------|-----------|------|----------|------|
 | `clone-chat` | HO-113 / HO-401 | 阿部勝寿 / 王蕙鈺 | ユーザー送信・クイック質問 | 返答テキスト + DB 保存 |
-| `simulate-clone-day` | HO-114 / HO-301 | 阿部勝寿 / 柴沼勇太 | 「今日を要約」・デモボタン | `clone_activities` 複数、`daily_topics` 1、`notes` 複数 |
+| `simulate-clone-day` | HO-114 / HO-301 | 阿部勝寿 / 柴沼勇太 | 「今日を要約」・デモボタン | `clone_activities` 複数、`topics` 1、`notes` 1 以上 |
 | `encounter-dialogue` | HO-115 / HO-208 | 阿部勝寿 / 柴沼勇太 | 集会場・NPC 近接 | `clone_encounters.dialogue` + `cross_topic` |
 | `apply-daily-answers` | HO-116 / HO-405 | 阿部勝寿 / 王蕙鈺 | 毎日の質問送信 | `clones` 更新 |
 | `parse-clone-command` | HO-118 / HO-403 | 阿部勝寿 / 柴沼勇太 | コマンドバー送信 | フロントへ JSON |
@@ -573,7 +573,7 @@ FE 側のモック差し替えポイント：
 ```
 frontend/
 ├── next.config.ts / tsconfig.json / eslint.config.mjs / postcss.config.mjs
-├── Dockerfile / docker-compose.yml / vercel.json / .env.example
+├── vercel.json / .env.example
 ├── public/                       # static SVGs
 └── src/
     ├── app/
@@ -592,7 +592,7 @@ frontend/
     │   └── world/                # VirtualWorld / WorldScene / Library / Avatar / Particles / CameraRig / palettes
     ├── lib/
     │   ├── storage.ts            # Storage インタフェース + LocalStorageImpl（末尾 1 行で SupabaseImpl に差替）
-    │   ├── clone-engine.ts       # CloneEngine インタフェース + LLMMockImpl（末尾 1 行で ClaudeApiImpl に差替）
+    │   ├── clone-engine.ts       # CloneEngine インタフェース + LLMMockImpl（Supabase 設定時は Edge Functions 経由）
     │   ├── store.ts              # Zustand のグローバル状態
     │   └── util.ts
     └── types/index.ts            # Clone / Topic / Message / Feedback / CameraMode / WorldAvatarState
@@ -678,16 +678,16 @@ frontend/
 - [ ] HO-104（`SupabaseImpl` 実装は未 — `frontend/src/lib/storage.ts` 末尾 1 行差し替え + メソッド本体）
 - [x] HO-105（未作成時に `/onboarding` 遷移：`src/app/page.tsx`）
 
-### Phase AI — **← Claude API へ差替（プロバイダ Gemini → Claude に変更）**
-- [ ] HO-110（共通 Claude クライアント。手順: `frontend/NEXT_STEPS.md` §A-3, A-4）
-- [ ] HO-111（人格 system プロンプト + コンテキスト組み立て: `src/lib/claude/prompts/`）
-- [ ] HO-112（FE 抽象は既に houchi-me 由来で完了。残るは `ClaudeApiImpl` 実装）
-- [ ] HO-113（`src/app/api/chat/route.ts`：Claude SSE ストリーミング — 雛形 §A-4 にあり）
-- [ ] HO-114（`src/app/api/topics/generate/route.ts` または Edge Function — 雛形 §A-4 にあり）
-- [ ] HO-115（Edge / API Route で `encounter-dialogue`）
-- [ ] HO-116（`apply-daily-answers`）
-- [ ] HO-117（モック UI → Claude 結果に差替。`engine` を `ClaudeApiImpl()` に書き換えるだけで主要画面は移行）
-- [ ] HO-118（`parse-clone-command`）
+### Phase AI — **← Gemini + Supabase Edge Functions**
+- [x] HO-110（共通 Gemini クライアント: `backend/supabase/functions/_shared/gemini.ts`）
+- [x] HO-111（人格 system プロンプト + コンテキスト組み立て: `backend/supabase/functions/_shared/clone-context.ts`）
+- [ ] HO-112（FE 抽象は実装済み。UI からの本番経路確認が残り）
+- [x] HO-113（`backend/supabase/functions/clone-chat/`）
+- [x] HO-114（`backend/supabase/functions/simulate-clone-day/`）
+- [x] HO-115（`backend/supabase/functions/encounter-dialogue/`）
+- [x] HO-116（`backend/supabase/functions/apply-daily-answers/`）
+- [ ] HO-117（モック UI → Gemini 結果に差替。UI 側の確認と空状態調整）
+- [x] HO-118（`backend/supabase/functions/parse-clone-command/`）
 
 ### Phase C
 - [x] HO-201（自動巡回 + HUD 連動：`WorldScene.tsx` / `HudCoord.tsx`）
@@ -735,8 +735,8 @@ frontend/
 ### Phase G — デプロイ・インフラ
 - [ ] HO-601（`vercel.json` を Next.js 用に置換・ローカル `npm run build` 成功 — Production URL 未）
 - [ ] HO-606（Vercel root=`frontend`・Framework=Next.js（自動検出）に切替必要）
-- [ ] HO-607（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `ANTHROPIC_API_KEY` を Vercel Env へ）
-- [ ] HO-608（`ANTHROPIC_API_KEY`・`SUPABASE_SERVICE_ROLE_KEY` を Supabase Secret / Vercel Env へ）
+- [ ] HO-607（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` を Vercel Env へ）
+- [ ] HO-608（`GEMINI_API_KEY`・必要なら `SUPABASE_SERVICE_ROLE_KEY` を Supabase Secret へ）
 - [ ] HO-609
 - [ ] HO-610
 - [ ] HO-602
@@ -767,7 +767,7 @@ frontend/
 | [../index.html](../index.html) | UI/3D モック（正） |
 | [../README.md](../README.md) | セットアップ・提出 |
 | [../frontend/README.md](../frontend/README.md) | Next.js アプリの起動・抽象化設計 |
-| [../frontend/NEXT_STEPS.md](../frontend/NEXT_STEPS.md) | Claude API / Supabase / Vercel 接続の手順書 |
+| [../frontend/NEXT_STEPS.md](../frontend/NEXT_STEPS.md) | Gemini / Supabase Edge Functions / Vercel 接続の手順書 |
 | [../backend/docs/db.md](../backend/docs/db.md) | DB 運用・テーブル一覧 |
 | [../backend/supabase/schema/README.md](../backend/supabase/schema/README.md) | スキーマ ER 図 |
 

@@ -325,6 +325,16 @@ function TagInput({
   setTags: (t: string[]) => void;
   color: string;
 }) {
+  const commitTag = () => {
+    const value = input.trim().replace(/,$/, '');
+    if (value && !tags.includes(value)) {
+      setTags([...tags, value]);
+    }
+    if (input !== '') {
+      setInput('');
+    }
+  };
+
   return (
     <Field label={label}>
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-2.5">
@@ -350,17 +360,23 @@ function TagInput({
           onChange={(e) => setInput(e.target.value)}
           placeholder={placeholder}
           className="w-full bg-transparent px-1 text-[13px] text-white placeholder:text-white/30 focus:outline-none"
+          onBlur={commitTag}
           onKeyDown={(e) => {
             if (e.key === 'Enter' || e.key === ',') {
               e.preventDefault();
-              const v = input.trim().replace(/,$/, '');
-              if (v && !tags.includes(v)) {
-                setTags([...tags, v]);
-              }
-              setInput('');
+              commitTag();
             }
           }}
         />
+        <div className="mt-2 flex justify-end">
+          <button
+            type="button"
+            onClick={commitTag}
+            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/70 hover:bg-white/[0.08]"
+          >
+            追加
+          </button>
+        </div>
       </div>
     </Field>
   );

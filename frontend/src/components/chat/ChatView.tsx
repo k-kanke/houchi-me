@@ -31,13 +31,16 @@ export default function ChatView() {
     const t = raw.trim();
     if (!t || !clone || sending) return;
     setSending(true);
+    const persistsMessages = engine.persistsMessages === true;
     const userMsg = {
       id: uuid(),
       role: 'user' as const,
       text: t,
       createdAt: nowIso(),
     };
-    await storage.appendMessage(userMsg);
+    if (!persistsMessages) {
+      await storage.appendMessage(userMsg);
+    }
     appendMessage(userMsg);
     setText('');
 
@@ -55,7 +58,9 @@ export default function ChatView() {
       acc += chunk;
       updateMessage(cloneMsgId, acc);
     }
-    await storage.appendMessage({ ...placeholder, text: acc });
+    if (!persistsMessages) {
+      await storage.appendMessage({ ...placeholder, text: acc });
+    }
     setSending(false);
   };
 

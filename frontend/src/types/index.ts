@@ -52,6 +52,21 @@ export interface Message {
   createdAt: string;
 }
 
+export interface EncounterLogLine {
+  speaker: string;
+  text: string;
+}
+
+export interface EncounterLog {
+  id: string;
+  partnerName: string;
+  location: string;
+  crossTopic: string;
+  dialogue: EncounterLogLine[];
+  createdAt: string;
+  isMock?: boolean;
+}
+
 export interface Feedback {
   topicId: string;
   kind: FeedbackKind;

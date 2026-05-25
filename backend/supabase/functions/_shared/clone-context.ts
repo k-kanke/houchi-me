@@ -1,4 +1,5 @@
 import type {
+  CloneEncounterRecord,
   CloneRecord,
   DailyAnswerInput,
   GeneratedDailyAnswerPayload,
@@ -25,6 +26,55 @@ const NPC_CONTEXT: Record<string, { style: string; interests: string[] }> = {
     interests: ['思索', '音楽', '抽象概念'],
   },
 };
+
+interface MockEncounterTemplate {
+  keywords: string[];
+  sageTopic: (topicTitle: string, like: string) => string;
+  sageLine: (cloneName: string, like: string) => string;
+  cloneSageReply: (like: string) => string;
+  echoTopic: (topicTitle: string, like: string, secondary: string) => string;
+  echoLine: (like: string, secondary: string) => string;
+  cloneEchoReply: (secondary: string) => string;
+}
+
+const MOCK_ENCOUNTER_TEMPLATES: MockEncounterTemplate[] = [
+  {
+    keywords: ['サッカー', 'フットボール', 'Jリーグ', 'プレミアリーグ'],
+    sageTopic: (topicTitle, like) => `${like}を観る視点と${topicTitle}の共通点`,
+    sageLine: (_cloneName, like) => `${like}って、試合そのものより“流れが変わる瞬間”に惹かれてない？`,
+    cloneSageReply: (like) => `たしかに。${like}は点より、その前の空気が変わる感じを見てるかも`,
+    echoTopic: (_topicTitle, like, secondary) => `${like}と${secondary}にあるリズム感`,
+    echoLine: (like, secondary) => `${like}のフォーメーションを見る感覚って、${secondary}を組み立てる時の視点に近いかもしれない`,
+    cloneEchoReply: (secondary) => `${secondary}を“配置で見る”って発想はなかった`,
+  },
+  {
+    keywords: ['ゲーム', 'ゲー厶', 'FPS', 'RPG', 'Switch', '任天堂', 'VALORANT', 'ポケモン'],
+    sageTopic: (topicTitle, like) => `${like}で感じる没入感と${topicTitle}`,
+    sageLine: (_cloneName, like) => `${like}って、勝ち負けより“世界に入り込めた感覚”が好きなんじゃない？`,
+    cloneSageReply: (like) => `${like}はそうかも。攻略より、入り込めた時の感覚が残る`,
+    echoTopic: (_topicTitle, like, secondary) => `${like}の選択と${secondary}の分岐`,
+    echoLine: (like, secondary) => `${like}でルートを選ぶ時の迷い方って、${secondary}で何を選ぶか考える時にも出ていそう`,
+    cloneEchoReply: (secondary) => `${secondary}も、確かに“どのルートを取るか”で考えてる感じがする`,
+  },
+  {
+    keywords: ['音楽', 'バンド', 'ギター', 'ピアノ', 'ライブ'],
+    sageTopic: (topicTitle, like) => `${like}で惹かれる音の重なりと${topicTitle}`,
+    sageLine: (_cloneName, like) => `${like}って、メロディより“重なった時の気配”に反応していない？`,
+    cloneSageReply: (like) => `あるかも。${like}は一音より、全体の空気で好きになることが多い`,
+    echoTopic: (_topicTitle, like, secondary) => `${like}の余韻と${secondary}の静けさ`,
+    echoLine: (like, secondary) => `${like}で残る余韻って、${secondary}を考える時の静かな集中に近い`,
+    cloneEchoReply: (secondary) => `${secondary}も“余韻で考える”って言い方ならしっくりくる`,
+  },
+  {
+    keywords: ['映画', '韓ドラ', 'ドラマ', 'アニメ'],
+    sageTopic: (topicTitle, like) => `${like}の物語構造と${topicTitle}`,
+    sageLine: (_cloneName, like) => `${like}って、展開より“間”とか伏線の置き方に惹かれてる気がする`,
+    cloneSageReply: (like) => `わかる。${like}は何が起きたかより、どう積み重ねたかを見てる`,
+    echoTopic: (_topicTitle, like, secondary) => `${like}の余白と${secondary}の見え方`,
+    echoLine: (like, secondary) => `${like}で好きな静かな場面って、${secondary}を考える時の感度とつながっていそう`,
+    cloneEchoReply: (secondary) => `${secondary}を“余白で見る”って感覚はありそう`,
+  },
+];
 
 function listOrFallback(values: string[] | null | undefined, fallback: string): string {
   const items = (values ?? []).map((value) => value.trim()).filter(Boolean);
@@ -67,6 +117,100 @@ export function buildRecentTopicContext(topics: TopicRecord[]): string {
   ].join('\n');
 }
 
+function buildEncounterSummary(encounter: CloneEncounterRecord): string {
+  const dialogue = Array.isArray(encounter.dialogue)
+    ? encounter.dialogue
+      .slice(0, 4)
+      .map((line) => {
+        const speaker = String(line?.speaker ?? '').trim();
+        const text = String(line?.text ?? '').trim();
+        if (!speaker || !text) return null;
+        return `${speaker}: ${text}`;
+      })
+      .filter((line): line is string => line !== null)
+    : [];
+
+  const lines = [
+    `- ${encounter.created_at}: ${encounter.partner_name} と ${encounter.location} で会話`,
+  ];
+
+  if (encounter.cross_topic?.trim()) {
+    lines.push(`  交差Topic: ${encounter.cross_topic.trim()}`);
+  }
+
+  if (dialogue.length > 0) {
+    lines.push(`  会話抜粋: ${dialogue.join(' / ')}`);
+  }
+
+  return lines.join('\n');
+}
+
+function pickMockEncounterTemplate(like: string): MockEncounterTemplate | null {
+  const normalized = like.toLowerCase();
+  return MOCK_ENCOUNTER_TEMPLATES.find((template) =>
+    template.keywords.some((keyword) => normalized.includes(keyword.toLowerCase())),
+  ) ?? null;
+}
+
+function buildMockEncounterSummaries(
+  clone: CloneRecord,
+  topics: TopicRecord[],
+): string[] {
+  const likes = (clone.likes ?? []).map((value) => value.trim()).filter(Boolean);
+  const seedLikes = likes.length > 0 ? likes.slice(0, 2) : ['最近の関心'];
+  const topicTitle = topics[0]?.title?.trim() || '今日のTopic';
+
+  const primary = seedLikes[0] ?? '最近の関心';
+  const secondary = seedLikes[1] ?? (clone.ideal_self?.trim() || '新しい視点');
+  const template = pickMockEncounterTemplate(primary);
+
+  if (template) {
+    return [
+      [
+        '- mock-log-1: Sage と 集会場 で会話',
+        `  交差Topic: ${template.sageTopic(topicTitle, primary)}`,
+        `  会話抜粋: Sage: 「${template.sageLine(clone.name, primary)}」 / ${clone.name}: 「${template.cloneSageReply(primary)}」`,
+      ].join('\n'),
+      [
+        '- mock-log-2: Echo と 天窓 で会話',
+        `  交差Topic: ${template.echoTopic(topicTitle, primary, secondary)}`,
+        `  会話抜粋: Echo: 「${template.echoLine(primary, secondary)}」 / ${clone.name}: 「${template.cloneEchoReply(secondary)}」`,
+      ].join('\n'),
+    ];
+  }
+
+  return [
+    [
+      '- mock-log-1: Sage と 集会場 で会話',
+      `  交差Topic: ${primary}と${topicTitle}のつながり`,
+      `  会話抜粋: Sage: 「${primary}って、好きな理由を言葉にするともっと広がるよ」 / ${clone.name}: 「たしかに、ただ好きで終わらせてたかも」`,
+    ].join('\n'),
+    [
+      '- mock-log-2: Echo と 天窓 で会話',
+      `  交差Topic: ${secondary}を通して見える別の自分`,
+      `  会話抜粋: Echo: 「${secondary}は、今のあなたを少し外から見直す入口かもしれない」 / ${clone.name}: 「その見方は、まだ自分ではしていなかった」`,
+    ].join('\n'),
+  ];
+}
+
+export function buildRecentEncounterContext(
+  clone: CloneRecord,
+  topics: TopicRecord[],
+  encounters: CloneEncounterRecord[],
+): string {
+  if (encounters.length === 0) {
+    return [
+      '最近のエージェント会話ログ:',
+      ...buildMockEncounterSummaries(clone, topics),
+    ].join('\n');
+  }
+
+  return [
+    '最近のエージェント会話ログ:',
+    ...encounters.map(buildEncounterSummary),
+  ].join('\n');
+}
+
 export function buildTopicGenerationPrompt(
   clone: CloneRecord,
   topics: TopicRecord[],
@@ -88,6 +232,7 @@ export function buildTopicGenerationPrompt(
 export function buildChatPrompt(
   clone: CloneRecord,
   topics: TopicRecord[],
+  encounters: CloneEncounterRecord[],
   messages: MessageRecord[],
   userText: string,
 ): { systemInstruction: string; contents: GeminiContent[] } {
@@ -96,6 +241,7 @@ export function buildChatPrompt(
     '口調は柔らかく、内省的で、少し観察的です。',
     '返答は日本語で 2〜4 文、最大 180 文字程度に収めてください。',
     '少なくとも一度は、ユーザーの既存の好みや理想像との接点に触れてください。',
+    '最近のエージェントとの会話ログがあれば、それを自分の記憶として参照して答えてください。',
     '断定しすぎず、必要なら仮説として話してください。',
     'Markdown や箇条書きは使わず、自然なチャット文だけを返してください。',
   ].join('\n');
@@ -105,7 +251,11 @@ export function buildChatPrompt(
       role: 'user',
       parts: [
         {
-          text: [buildCloneIdentity(clone), buildRecentTopicContext(topics)].join('\n\n'),
+          text: [
+            buildCloneIdentity(clone),
+            buildRecentTopicContext(topics),
+            buildRecentEncounterContext(clone, topics, encounters),
+          ].join('\n\n'),
         },
       ],
     },

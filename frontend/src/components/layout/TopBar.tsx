@@ -4,6 +4,7 @@ import { useAppStore } from '@/lib/store';
 
 const NAV_BUTTONS = [
   { id: 'hobbies' as const, label: 'ハマっている趣味', icon: '✦' },
+  { id: 'encounters' as const, label: '会話ログ', icon: '◌' },
   { id: 'friends' as const, label: 'フレンド', icon: '◍' },
   { id: 'profile' as const, label: 'プロフィール', icon: '◉' },
 ];

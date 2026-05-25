@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { storage } from '@/lib/storage';
-import type { HumanFriend } from '@/types';
+import type { EncounterLog, HumanFriend } from '@/types';
 
 interface HobbyEntry {
   name: string;
@@ -237,6 +237,84 @@ function HobbiesOverlay({ onClose }: { onClose: () => void }) {
             accent="muted"
             onSelect={setSelected}
           />
+        </div>
+      )}
+    </OverlayShell>
+  );
+}
+
+function EncounterLogsOverlay({ onClose }: { onClose: () => void }) {
+  const [logs, setLogs] = useState<EncounterLog[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const next = await storage.getEncounterLogs();
+        if (!cancelled) setLogs(next);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <OverlayShell
+      title="会話ログ"
+      subtitle="クローンが最近エージェントと交わした会話"
+      onClose={onClose}
+    >
+      {loading ? (
+        <div className="text-[12px] text-white/45">読み込み中...</div>
+      ) : logs.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-white/[0.08] bg-white/[0.01] p-4 text-[12px] text-white/40">
+          まだ会話ログはありません。
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {logs.map((log) => (
+            <section
+              key={log.id}
+              className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4"
+            >
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-[13px] font-semibold text-white/90">
+                    {log.partnerName} · {log.location}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-white/45">
+                    {new Date(log.createdAt).toLocaleString('ja-JP')}
+                    {log.isMock ? ' · mock' : ''}
+                  </div>
+                </div>
+                {log.crossTopic && (
+                  <div className="rounded-full border border-[var(--color-neon-cyan)]/25 bg-[var(--color-neon-cyan)]/10 px-2.5 py-1 text-[10.5px] text-[var(--color-neon-cyan)]">
+                    {log.crossTopic}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                {log.dialogue.map((line, index) => (
+                  <div
+                    key={`${log.id}-${index}`}
+                    className="rounded-xl border border-white/[0.05] bg-white/[0.025] px-3 py-2"
+                  >
+                    <div className="mb-1 font-mono text-[10px] uppercase tracking-[0.25em] text-white/40">
+                      {line.speaker}
+                    </div>
+                    <div className="text-[12.5px] leading-relaxed text-white/85">
+                      {line.text}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          ))}
         </div>
       )}
     </OverlayShell>
@@ -835,6 +913,7 @@ export default function Overlays() {
 
   if (!openOverlay) return null;
   if (openOverlay === 'hobbies') return <HobbiesOverlay onClose={close} />;
+  if (openOverlay === 'encounters') return <EncounterLogsOverlay onClose={close} />;
   if (openOverlay === 'friends') return <FriendsOverlay onClose={close} />;
   if (openOverlay === 'profile') return <ProfileOverlay onClose={close} />;
   return null;

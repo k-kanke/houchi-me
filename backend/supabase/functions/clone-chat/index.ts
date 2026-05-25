@@ -3,6 +3,7 @@ import { buildChatPrompt } from '../_shared/clone-context.ts';
 import { generateText } from '../_shared/gemini.ts';
 import {
   createAuthedClient,
+  fetchRecentEncounters,
   fetchOwnedClone,
   fetchRecentMessages,
   fetchRecentTopics,
@@ -26,8 +27,9 @@ Deno.serve(async (req) => {
     const supabase = createAuthedClient(req);
     const clone = await fetchOwnedClone(supabase, cloneId);
     const topics = await fetchRecentTopics(supabase, cloneId, 3);
+    const encounters = await fetchRecentEncounters(supabase, cloneId, 5);
     const messages = await fetchRecentMessages(supabase, cloneId, 12);
-    const prompt = buildChatPrompt(clone, topics, messages, userText.trim());
+    const prompt = buildChatPrompt(clone, topics, encounters, messages, userText.trim());
     const reply = await generateText(prompt);
     const { error: messageError } = await supabase.from('messages').insert([
       {

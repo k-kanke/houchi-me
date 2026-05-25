@@ -43,6 +43,19 @@ const DEMO_HUMAN_FRIENDS: HumanFriend[] = [
   },
 ];
 
+interface EncounterMessage {
+  role: 'user' | 'model';
+  content: string;
+}
+
+interface EncounterState {
+  sessionId: string;
+  avatarName: string;
+  messages: EncounterMessage[];
+  isLoading: boolean;
+  isStreaming: boolean;
+}
+
 interface AppState {
   clone: Clone | null;
   topics: Topic[];
@@ -56,7 +69,7 @@ interface AppState {
   currentSpeaker: number;
   bootDone: boolean;
   hydrated: boolean;
-  openOverlay: 'hobbies' | 'friends' | 'profile' | null;
+  openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | null;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -67,6 +80,7 @@ interface AppState {
   convTurnIdx: number;
   activeAgentRoomIds: string[]; // 場にいる部屋アバターの id（最大 3）
   roomResidents: Record<string, number>; // roomId -> 現在の roster index
+  encounter: EncounterState | null;
 
   setClone: (clone: Clone | null) => void;
   setTopics: (topics: Topic[]) => void;
@@ -84,7 +98,7 @@ interface AppState {
   setCurrentSpeaker: (i: number) => void;
   setBootDone: (v: boolean) => void;
   setHydrated: (v: boolean) => void;
-  setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | null) => void;
+  setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | 'encounters' | null) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
@@ -93,6 +107,12 @@ interface AppState {
   setRoomConversationId: (id: string | null) => void;
   setConvTurnIdx: (n: number | ((prev: number) => number)) => void;
   setAgentRotation: (ids: string[], residents: Record<string, number>) => void;
+  startEncounter: (sessionId: string, avatarName: string, firstMessage: string) => void;
+  addEncounterMessage: (role: 'user' | 'model') => void;
+  appendEncounterStream: (text: string) => void;
+  finalizeEncounterStream: () => void;
+  endEncounter: () => void;
+  setEncounterLoading: (loading: boolean) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -119,6 +139,7 @@ export const useAppStore = create<AppState>((set) => ({
   convTurnIdx: 0,
   activeAgentRoomIds: [],
   roomResidents: {},
+  encounter: null,
 
   setClone: (clone) => set({ clone }),
   setTopics: (topics) => set({ topics }),
@@ -183,4 +204,57 @@ export const useAppStore = create<AppState>((set) => ({
     })),
   setAgentRotation: (activeAgentRoomIds, roomResidents) =>
     set({ activeAgentRoomIds, roomResidents }),
+
+  startEncounter: (sessionId, avatarName, firstMessage) =>
+    set({
+      encounter: {
+        sessionId,
+        avatarName,
+        messages: [{ role: 'model', content: firstMessage }],
+        isLoading: false,
+        isStreaming: false,
+      },
+    }),
+
+  addEncounterMessage: (role) =>
+    set((s) => {
+      if (!s.encounter) return s;
+      return {
+        encounter: {
+          ...s.encounter,
+          messages: [...s.encounter.messages, { role, content: '' }],
+        },
+      };
+    }),
+
+  appendEncounterStream: (text) =>
+    set((s) => {
+      if (!s.encounter) return s;
+      const msgs = s.encounter.messages;
+      if (msgs.length === 0) return s;
+      const last = msgs[msgs.length - 1];
+      return {
+        encounter: {
+          ...s.encounter,
+          messages: [
+            ...msgs.slice(0, -1),
+            { ...last, content: last.content + text },
+          ],
+        },
+      };
+    }),
+
+  finalizeEncounterStream: () =>
+    set((s) => {
+      if (!s.encounter) return s;
+      return { encounter: { ...s.encounter, isStreaming: false } };
+    }),
+
+  endEncounter: () => set({ encounter: null }),
+
+  setEncounterLoading: (loading) =>
+    set((s) => {
+      if (!s.encounter) return s;
+      return { encounter: { ...s.encounter, isLoading: loading } };
+    }),
 }));

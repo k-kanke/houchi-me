@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import type { CloneRecord, MessageRecord, TopicRecord } from './domain.ts';
+import type { CloneEncounterRecord, CloneRecord, MessageRecord, TopicRecord } from './domain.ts';
 
 function getSupabaseUrl(req: Request): string {
   return (
@@ -112,6 +112,25 @@ export async function fetchRecentMessages(
   }
 
   return ((data ?? []) as MessageRecord[]).reverse();
+}
+
+export async function fetchRecentEncounters(
+  supabase: SupabaseClient,
+  cloneId: string,
+  limit = 5,
+): Promise<CloneEncounterRecord[]> {
+  const { data, error } = await supabase
+    .from('clone_encounters')
+    .select('*')
+    .eq('clone_id', cloneId)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Failed to load encounters: ${error.message}`);
+  }
+
+  return (data ?? []) as CloneEncounterRecord[];
 }
 
 export async function fetchDailyQuestions(

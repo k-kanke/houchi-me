@@ -13,6 +13,8 @@ import { todayKey } from '@/lib/util';
 import VirtualWorld from '@/components/world/VirtualWorld';
 import ChatPanel from '@/components/chat/ChatPanel';
 import Overlays from '@/components/overlay/Overlays';
+import EncounterOverlay from '@/components/encounter/EncounterOverlay';
+import EncounterTrigger from '@/components/encounter/EncounterTrigger';
 
 export default function AppShell() {
   const clone = useAppStore((s) => s.clone);
@@ -71,6 +73,12 @@ export default function AppShell() {
             </div>
             <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
               <ConversationModule />
+            </div>
+            <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
+              <EncounterOverlay />
+            </div>
+            <div className="absolute bottom-20 right-6">
+              <EncounterTrigger />
             </div>
           </div>
         </main>

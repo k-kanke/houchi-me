@@ -36,6 +36,16 @@ export interface MessageRecord {
   created_at: string;
 }
 
+export interface CloneEncounterRecord {
+  id: string;
+  clone_id: string;
+  partner_name: string;
+  location: string;
+  dialogue: EncounterDialogueLine[] | null;
+  cross_topic: string;
+  created_at: string;
+}
+
 export interface GeneratedTopicPayload {
   title: string;
   reasoning: string;

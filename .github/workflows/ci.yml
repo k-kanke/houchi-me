@@ -34,8 +34,6 @@ jobs:
       run:
         working-directory: frontend
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
       CI: true
     steps:
       - name: Checkout
@@ -50,6 +48,14 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+
+      - name: Set frontend env
+        run: |
+          echo "NEXT_PUBLIC_SUPABASE_URL=${SUPABASE_URL_SECRET:-https://example.supabase.co}" >> "$GITHUB_ENV"
+          echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY_SECRET:-dummy-anon-key}" >> "$GITHUB_ENV"
+        env:
+          SUPABASE_URL_SECRET: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          SUPABASE_ANON_KEY_SECRET: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
 
       - name: Build Next.js app
         run: npm run build

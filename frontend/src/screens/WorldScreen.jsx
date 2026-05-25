@@ -47,6 +47,63 @@ export default function WorldScreen({ clone, onOpenTopic }) {
   })
 
   const [overlay, setOverlay] = useState(null)
+  const [controlMode, setControlMode] = useState('auto')
+  const inputRef = useRef({
+    mode: 'auto',
+    forward: false,
+    back: false,
+    left: false,
+    right: false,
+  })
+
+  const movementKeys = useRef(new Set())
+
+  useEffect(() => {
+    inputRef.current.mode = controlMode
+  }, [controlMode])
+
+  useEffect(() => {
+    const isTypingTarget = (el) =>
+      el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)
+
+    const syncInput = () => {
+      const keys = movementKeys.current
+      inputRef.current.forward = keys.has('w') || keys.has('arrowup')
+      inputRef.current.back = keys.has('s') || keys.has('arrowdown')
+      inputRef.current.left = keys.has('a') || keys.has('arrowleft')
+      inputRef.current.right = keys.has('d') || keys.has('arrowright')
+    }
+
+    const onKeyDown = (e) => {
+      if (isTypingTarget(e.target)) return
+      const k = e.key.toLowerCase()
+      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(k)) {
+        movementKeys.current.add(k)
+        syncInput()
+        e.preventDefault()
+      }
+    }
+
+    const onKeyUp = (e) => {
+      const k = e.key.toLowerCase()
+      movementKeys.current.delete(k)
+      syncInput()
+    }
+
+    const onBlur = () => {
+      movementKeys.current.clear()
+      syncInput()
+    }
+
+    window.addEventListener('keydown', onKeyDown)
+    window.addEventListener('keyup', onKeyUp)
+    window.addEventListener('blur', onBlur)
+    return () => {
+      window.removeEventListener('keydown', onKeyDown)
+      window.removeEventListener('keyup', onKeyUp)
+      window.removeEventListener('blur', onBlur)
+    }
+  }, [])
 
   useEffect(() => {
     if (!canvasRef.current || !rootRef.current || sceneStartedRef.current) return
@@ -82,7 +139,16 @@ export default function WorldScreen({ clone, onOpenTopic }) {
       loaderEl: loaderRef.current,
       loaderStatusEl: loaderStatusRef.current,
       ui,
+      inputRef,
       queryAll: (sel) => rootRef.current.querySelectorAll(sel),
+      onManualLocation: (wp) => {
+        setHud((prev) => ({
+          ...prev,
+          location: wp.location,
+          actTitle: `${wp.location}を探索中`,
+          actSub: '手動操作 · WASD / 矢印キー',
+        }))
+      },
       onWaypoint: (wp) => {
         setHud((prev) => ({
           ...prev,
@@ -278,6 +344,27 @@ export default function WorldScreen({ clone, onOpenTopic }) {
             速度 <b id="hud-speed">0.00 m/s</b>
             <br />
             現地時刻 <b id="hud-time">14:23</b>
+          </div>
+
+          <div className="control-mode-panel">
+            <div className="control-mode-label">操作</div>
+            <button
+              type="button"
+              className={`control-mode-btn ${controlMode === 'auto' ? 'active' : ''}`}
+              onClick={() => setControlMode('auto')}
+            >
+              放置
+            </button>
+            <button
+              type="button"
+              className={`control-mode-btn ${controlMode === 'manual' ? 'active' : ''}`}
+              onClick={() => setControlMode('manual')}
+            >
+              手動
+            </button>
+            {controlMode === 'manual' && (
+              <span className="control-hint-keys">WASD / ↑←↓→</span>
+            )}
           </div>
 
           <div className="camera-hint">

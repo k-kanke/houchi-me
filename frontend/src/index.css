@@ -200,6 +200,59 @@
   background: rgba(79, 245, 231, 0.28);
 }
 
+.control-mode-panel {
+  position: absolute;
+  top: 50%;
+  right: 24px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-strong);
+  background: rgba(7, 9, 30, 0.7);
+  backdrop-filter: blur(14px);
+  pointer-events: auto;
+  z-index: 12;
+}
+
+.control-mode-label {
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+.control-mode-btn {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-2);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.control-mode-btn.active {
+  border-color: rgba(79, 245, 231, 0.45);
+  background: rgba(79, 245, 231, 0.12);
+  color: var(--neon-cyan);
+}
+
+.control-mode-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text-0);
+}
+
+.control-hint-keys {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  color: var(--text-3);
+  letter-spacing: 0.06em;
+  margin-top: 2px;
+}
+
 :root {
   --bg-primary: #0A0A0A;
   --bg-secondary: #141414;

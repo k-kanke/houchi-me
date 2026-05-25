@@ -12,7 +12,42 @@ export function initLibraryScene(options) {
   const ui = options.ui
   const queryAll = options.queryAll || ((sel) => document.querySelectorAll(sel))
   const $ = (id) => ui[id]
+  const inputRef = options.inputRef || { current: { mode: 'auto' } }
   if (!canvas) throw new Error('canvas required')
+
+  function nearestWaypoint(pos) {
+    let best = waypoints[0]
+    let bestD = Infinity
+    for (const wp of waypoints) {
+      const d = pos.distanceTo(wp.pos)
+      if (d < bestD) {
+        bestD = d
+        best = wp
+      }
+    }
+    return best
+  }
+
+  function applyWalkAnimation(t, moving) {
+    if (moving) {
+      const swing = Math.sin(t * 9) * 0.6
+      avatar.userData.leftLeg.rotation.x = swing
+      avatar.userData.rightLeg.rotation.x = -swing
+      avatar.userData.leftArm.rotation.x = -swing * 0.5
+      avatar.userData.rightArm.rotation.x = swing * 0.5
+      avatar.position.y = Math.abs(Math.sin(t * 9)) * 0.04
+      avatar.userData.head.rotation.x = 0
+      avatar.userData.head.rotation.y = 0
+    } else {
+      avatar.userData.leftLeg.rotation.x = 0
+      avatar.userData.rightLeg.rotation.x = 0
+      avatar.userData.leftArm.rotation.x = 0
+      avatar.userData.rightArm.rotation.x = 0
+      avatar.position.y = 0
+      avatar.userData.head.rotation.x = 0
+      avatar.userData.head.rotation.y = 0
+    }
+  }
 
   const COLORS = {
     bg: 0x03040f,
@@ -1115,8 +1150,46 @@ export function initLibraryScene(options) {
     const t = clock.getElapsedTime();
 
     // ----- Avatar movement -----
-    const wp = waypoints[wpIndex];
+    const input = inputRef.current || { mode: 'auto' }
+    let manualSpeed = 0
+
+    if (input.mode === 'manual') {
+      let mx = 0
+      let mz = 0
+      if (input.forward) mz -= 1
+      if (input.back) mz += 1
+      if (input.left) mx -= 1
+      if (input.right) mx += 1
+      const len = Math.hypot(mx, mz)
+      if (len > 0.01) {
+        mx /= len
+        mz /= len
+        const step = moveSpeed * dt
+        avatar.position.x += mx * step
+        avatar.position.z += mz * step
+        const targetAngle = Math.atan2(mx, mz)
+        let curAngle = avatar.rotation.y
+        let delta = targetAngle - curAngle
+        while (delta > Math.PI) delta -= Math.PI * 2
+        while (delta < -Math.PI) delta += Math.PI * 2
+        avatar.rotation.y += delta * Math.min(1, dt * 8)
+        applyWalkAnimation(t, true)
+        manualSpeed = moveSpeed
+        const near = nearestWaypoint(avatar.position)
+        if (options.onManualLocation) {
+          options.onManualLocation(near)
+        } else {
+          const bc = $('bc-location')
+          if (bc) bc.textContent = near.location
+          const actTitle = $('act-title')
+          if (actTitle) actTitle.textContent = `${near.location}を探索中`
+        }
+      } else {
+        applyWalkAnimation(t, false)
+      }
+    } else {
     if (wpPhase === 'walking') {
+    const wp = waypoints[wpIndex];
       const target = wp.pos.clone();
       const diff = target.clone().sub(avatar.position);
       diff.y = 0;
@@ -1181,6 +1254,7 @@ export function initLibraryScene(options) {
         avatar.userData.head.rotation.x = 0;
         avatar.userData.head.rotation.y = 0;
       }
+    }
     }
 
     // ----- Avatar effects (core pulse, ring) -----
@@ -1294,8 +1368,9 @@ export function initLibraryScene(options) {
       lastSec = t;
       $('hud-pos').textContent =
         `X ${avatar.position.x.toFixed(2)} · Y ${avatar.position.y.toFixed(2)} · Z ${avatar.position.z.toFixed(2)}`;
-      const speed = wpPhase === 'walking' ? moveSpeed : 0;
-      $('hud-speed').textContent = speed.toFixed(2) + ' m/s';
+      const speed = input.mode === 'manual' ? manualSpeed : (wpPhase === 'walking' ? moveSpeed : 0);
+      const hudSpeed = $('hud-speed')
+      if (hudSpeed) hudSpeed.textContent = speed.toFixed(2) + ' m/s';
       // time progress
       const now = new Date();
       $('hud-time').textContent =

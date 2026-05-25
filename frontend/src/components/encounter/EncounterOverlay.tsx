@@ -43,11 +43,13 @@ export default function EncounterOverlay() {
 
     if (turnCountRef.current >= MAX_TURNS) {
       timerRef.current = setTimeout(async () => {
-        await fetch('/api/encounter/end', {
+        const res = await fetch('/api/encounter/end', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
         });
+        const result = await res.json();
+        console.log('[encounter/end]', result);
         endEncounter();
       }, END_DELAY_MS);
       return;
@@ -139,11 +141,13 @@ export default function EncounterOverlay() {
     if (!encounter) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     sessionIdRef.current = null;
-    await fetch('/api/encounter/end', {
+    const res = await fetch('/api/encounter/end', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ sessionId: encounter.sessionId }),
     });
+    const result = await res.json();
+    console.log('[encounter/end]', result);
     useAppStore.getState().endEncounter();
   };
 

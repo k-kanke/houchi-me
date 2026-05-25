@@ -48,8 +48,8 @@ export interface Feedback {
   createdAt: string;
 }
 
-export type CameraMode = 'follow' | 'orbit' | 'top' | 'cinema';
 export type ViewTab = 'note' | 'world' | 'chat';
+export type ControlMode = 'auto' | 'manual';
 
 export interface WorldAvatarState {
   id: 'mira' | 'sage' | 'echo';

@@ -170,29 +170,6 @@ npm run dev
 初回は `/onboarding` に自動遷移し、6 ステップでクローンを作成すると `/` のメイン画面（叡智の図書館）に戻ります。
 データは `localStorage` 永続化（既定）。やり直したい時は devtools の Application タブで `houchi-me/*` キーをクリアしてください。
 
-### Docker で起動する
-
-`frontend/.env.example` をコピーして `frontend/.env.local` を作り、Supabase の URL / anon key を設定する（本番接続時のみ。ローカル MVP では未設定で OK）。
-
-```bash
-cd frontend
-cp .env.example .env.local
-docker compose up --build
-```
-
-アプリは `http://localhost:3000` で開く。
-開発用コンテナは起動時に `npm ci` を実行して、`node_modules` ボリュームの依存ずれを避ける。
-
-本番相当のサーバー起動を確認したい場合:
-
-```bash
-cd frontend
-docker compose --profile prod up --build web-prod
-```
-
-こちらは `http://localhost:8080` で `next start` が動く。
-`web-prod` は `.env.local` の `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` を build 時に埋め込む。
-
 ## 既知の問題 / 未実装機能（Day3 審査員向け）
 
 開発期間が短いため、Day3 提出時点で「ここまでやった／ここは諦めた」を正直に書く。

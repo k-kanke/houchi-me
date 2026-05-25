@@ -8,7 +8,7 @@ import CommandBar from './CommandBar';
 import Breadcrumb from '@/components/main/Breadcrumb';
 import ViewTabs from '@/components/main/ViewTabs';
 import HudCoord from '@/components/main/HudCoord';
-import CameraButtons from '@/components/main/CameraButtons';
+import ControlModeToggle from '@/components/main/ControlModeToggle';
 import ActivityBadge from '@/components/main/ActivityBadge';
 import WorldStats from '@/components/main/WorldStats';
 import { useAppStore } from '@/lib/store';
@@ -57,7 +57,7 @@ export default function AppShell() {
           <Sidebar />
         </div>
         <main className="relative min-h-0 overflow-hidden">
-          <div className="pointer-events-none absolute inset-0">
+          <div className="pointer-events-none absolute inset-0 z-10">
             <div className="absolute left-4 right-4 top-3 flex items-center justify-between">
               <Breadcrumb />
               <div className="pointer-events-auto">
@@ -70,7 +70,7 @@ export default function AppShell() {
             {tab === 'world' && (
               <>
                 <div className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2">
-                  <CameraButtons />
+                  <ControlModeToggle />
                 </div>
                 <div className="pointer-events-auto absolute bottom-4 left-4">
                   <ActivityBadge />
@@ -82,7 +82,7 @@ export default function AppShell() {
             )}
           </div>
 
-          <div className="absolute inset-0">
+          <div className="absolute inset-0 z-0">
             {tab === 'world' && <VirtualWorld />}
             {tab === 'note' && (
               <div className="no-scrollbar h-full overflow-y-auto p-8 pt-20">

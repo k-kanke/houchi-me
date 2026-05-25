@@ -87,6 +87,7 @@ interface AppState {
   bootDone: boolean;
   hydrated: boolean;
   openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null;
+  chatPanelOpen: boolean;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -118,6 +119,8 @@ interface AppState {
   setBootDone: (v: boolean) => void;
   setHydrated: (v: boolean) => void;
   setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null) => void;
+  setChatPanelOpen: (open: boolean) => void;
+  toggleChatPanel: () => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
@@ -155,6 +158,7 @@ export const useAppStore = create<AppState>((set) => ({
   bootDone: false,
   hydrated: false,
   openOverlay: null,
+  chatPanelOpen: false,
   chatTrigger: null,
   myFriendId: generateFriendId(),
   humanFriends: DEMO_HUMAN_FRIENDS,
@@ -196,6 +200,9 @@ export const useAppStore = create<AppState>((set) => ({
   setBootDone: (bootDone) => set({ bootDone }),
   setHydrated: (hydrated) => set({ hydrated }),
   setOpenOverlay: (openOverlay) => set({ openOverlay }),
+  setChatPanelOpen: (chatPanelOpen) => set({ chatPanelOpen }),
+  toggleChatPanel: () =>
+    set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
   setChatTrigger: (chatTrigger) => set({ chatTrigger }),
   addHumanFriend: (friendId) => {
     const cleaned = friendId.trim().toUpperCase();

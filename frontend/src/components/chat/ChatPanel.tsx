@@ -16,6 +16,8 @@ const FIXED_REPLY_TEXT =
   'API 接続後にチャット機能は利用可能になります。今は静かに待っていてね。';
 
 export default function ChatPanel() {
+  const chatPanelOpen = useAppStore((s) => s.chatPanelOpen);
+  const setChatPanelOpen = useAppStore((s) => s.setChatPanelOpen);
   const clone = useAppStore((s) => s.clone);
   const messages = useAppStore((s) => s.messages);
   const appendMessage = useAppStore((s) => s.appendMessage);
@@ -94,21 +96,46 @@ export default function ChatPanel() {
     if (!chatTrigger) return;
     const { message, fixedReply } = chatTrigger;
     setChatTrigger(null);
+    setChatPanelOpen(true);
     const timer = window.setTimeout(() => {
       void send(message, fixedReply);
     }, 0);
     return () => window.clearTimeout(timer);
-  }, [chatTrigger, setChatTrigger, send]);
+  }, [chatTrigger, setChatTrigger, setChatPanelOpen, send]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setChatPanelOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [setChatPanelOpen]);
+
+  const panelStyle = {
+    background: 'rgba(10, 8, 32, 0.32)',
+    backdropFilter: 'blur(24px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+  } as const;
 
   return (
-    <aside
-      className="flex h-full w-[380px] shrink-0 flex-col border-l border-white/[0.06]"
-      style={{
-        background: 'rgba(10, 8, 32, 0.32)',
-        backdropFilter: 'blur(24px) saturate(160%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-      }}
-    >
+    <>
+      <div
+        role="presentation"
+        aria-hidden={!chatPanelOpen}
+        onClick={() => setChatPanelOpen(false)}
+        className={`fixed inset-0 z-30 bg-black/55 transition-opacity duration-300 lg:hidden ${
+          chatPanelOpen
+            ? 'pointer-events-auto opacity-100'
+            : 'pointer-events-none opacity-0'
+        }`}
+      />
+      <aside
+        aria-label="クローンチャット"
+        className={`fixed inset-y-0 right-0 z-40 flex h-full w-[min(380px,100vw)] shrink-0 flex-col border-l border-white/[0.06] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-[380px] lg:translate-x-0 lg:shadow-none ${
+          chatPanelOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        style={panelStyle}
+      >
       <div
         className="flex h-[72px] items-center justify-between border-b border-white/[0.05] px-4"
         style={{
@@ -133,35 +160,45 @@ export default function ChatPanel() {
             </div>
           </div>
         </div>
-        {chatTarget.type !== 'self' ? (
+        <div className="flex items-center gap-1.5">
+          {chatTarget.type !== 'self' ? (
+            <button
+              onClick={() => setChatTarget({ type: 'self' })}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10.5px] text-white/55 hover:bg-white/[0.06]"
+              title="自分のクローンに戻る"
+            >
+              自分に戻る
+            </button>
+          ) : (
+            <button
+              onClick={async () => {
+                if (sending) return;
+                if (messages.length > 0) {
+                  const ok = window.confirm(
+                    '会話履歴を消して新しい会話を始めますか？',
+                  );
+                  if (!ok) return;
+                }
+                setMessages([]);
+                setText('');
+                await storage.clearMessages();
+              }}
+              disabled={sending}
+              className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10.5px] text-white/55 hover:bg-white/[0.06] disabled:opacity-40"
+              title="会話履歴を消去して新しい会話を始める"
+            >
+              ＋ 新規
+            </button>
+          )}
           <button
-            onClick={() => setChatTarget({ type: 'self' })}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10.5px] text-white/55 hover:bg-white/[0.06]"
-            title="自分のクローンに戻る"
+            type="button"
+            onClick={() => setChatPanelOpen(false)}
+            className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] lg:hidden"
+            aria-label="チャットを閉じる"
           >
-            自分に戻る
+            ×
           </button>
-        ) : (
-          <button
-            onClick={async () => {
-              if (sending) return;
-              if (messages.length > 0) {
-                const ok = window.confirm(
-                  '会話履歴を消して新しい会話を始めますか？',
-                );
-                if (!ok) return;
-              }
-              setMessages([]);
-              setText('');
-              await storage.clearMessages();
-            }}
-            disabled={sending}
-            className="rounded-full border border-white/10 bg-white/[0.03] px-2.5 py-1 text-[10.5px] text-white/55 hover:bg-white/[0.06] disabled:opacity-40"
-            title="会話履歴を消去して新しい会話を始める"
-          >
-            ＋ 新規
-          </button>
-        )}
+        </div>
       </div>
 
       <div
@@ -238,5 +275,6 @@ export default function ChatPanel() {
         </div>
       </div>
     </aside>
+    </>
   );
 }

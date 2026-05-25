@@ -62,22 +62,22 @@ export default function AppShell() {
             <VirtualWorld />
           </div>
           <div className="pointer-events-none absolute inset-0 z-10">
-            <div className="absolute left-4 top-4">
+            <div className="absolute left-2 top-2 sm:left-4 sm:top-4">
               <div className="flex flex-col gap-2">
                 <ControlModeToggle />
                 <EncounterTrigger />
               </div>
             </div>
-            <div className="absolute bottom-6 left-6">
+            <div className="absolute bottom-4 left-2 sm:bottom-6 sm:left-6">
               <ControlPad />
             </div>
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+            <div className="absolute bottom-20 left-1/2 max-w-[calc(100%-1rem)] -translate-x-1/2 sm:bottom-6">
               <TalkButton />
             </div>
-            <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
+            <div className="absolute bottom-4 left-1/2 flex w-full max-w-[calc(100%-1rem)] -translate-x-1/2 justify-center px-2 sm:bottom-6 sm:px-4">
               <ConversationModule />
             </div>
-            <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
+            <div className="absolute bottom-4 left-1/2 flex w-full max-w-[calc(100%-1rem)] -translate-x-1/2 justify-center px-2 sm:bottom-6 sm:px-4">
               <EncounterOverlay />
             </div>
           </div>

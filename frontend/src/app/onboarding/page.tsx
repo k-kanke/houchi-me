@@ -31,6 +31,37 @@ const EXPLORATIONS: { id: ExplorationType; label: string; desc: string }[] = [
   { id: 'reverse', label: '反転型', desc: '本人と真逆の方向で探索' },
 ];
 
+const LIKE_SUGGESTIONS = [
+  'カフェ',
+  '韓ドラ',
+  '旅行',
+  '読書',
+  '映画',
+  '音楽',
+  'ゲーム',
+  '料理',
+  '写真',
+  'アニメ',
+  'スポーツ',
+  'ファッション',
+  '推し活',
+  '散歩',
+  '猫',
+] as const;
+
+const DISLIKE_SUGGESTIONS = [
+  '人混み',
+  '早起き',
+  '大音量',
+  '湿気',
+  '待ち時間',
+  '終電',
+  '虫',
+  '辛い食べ物',
+  'プレゼン',
+  '夜更かし',
+] as const;
+
 export default function OnboardingPage() {
   const router = useRouter();
   const setClone = useAppStore((s) => s.setClone);
@@ -42,8 +73,12 @@ export default function OnboardingPage() {
   const [likeInput, setLikeInput] = useState('');
   const [dislikes, setDislikes] = useState<string[]>([]);
   const [dislikeInput, setDislikeInput] = useState('');
-  const [selfDescription, setSelfDescription] = useState('');
-  const [idealSelf, setIdealSelf] = useState('');
+  const [selfDescription, setSelfDescription] = useState(
+    '人と話すのは好きだけど、一人で没頭できる趣味も欲しい。好きなことはあるけど、それが「本気の興味」かはまだわからない。',
+  );
+  const [idealSelf, setIdealSelf] = useState(
+    'もっと自分の世界を持っていて、小さな発見を大切にできる人になりたい。',
+  );
   const [shift, setShift] = useState<PersonalityShift>('stay');
   const [exploration, setExploration] = useState<ExplorationType>('breadth');
 
@@ -77,8 +112,9 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="relative z-10 flex min-h-screen items-center justify-center px-4 py-12">
-      <div className="glass-strong relative w-full max-w-2xl rounded-3xl p-8 md:p-10">
+    <div className="fixed inset-0 z-10 overflow-y-auto overscroll-y-contain">
+      <div className="flex min-h-full items-center justify-center px-4 py-8 sm:py-12">
+        <div className="glass-strong relative my-4 w-full max-w-2xl rounded-3xl p-8 md:p-10">
         {/* progress */}
         <div className="mb-8 flex items-center justify-center gap-2">
           {Array.from({ length: totalSteps }).map((_, i) => (
@@ -145,6 +181,7 @@ export default function OnboardingPage() {
                 input={likeInput}
                 setInput={setLikeInput}
                 setTags={setLikes}
+                suggestions={LIKE_SUGGESTIONS}
                 color="var(--color-neon-cyan)"
               />
               <TagInput
@@ -154,6 +191,7 @@ export default function OnboardingPage() {
                 input={dislikeInput}
                 setInput={setDislikeInput}
                 setTags={setDislikes}
+                suggestions={DISLIKE_SUGGESTIONS}
                 color="var(--color-neon-pink)"
               />
             </div>
@@ -271,6 +309,7 @@ export default function OnboardingPage() {
             </button>
           )}
         </div>
+        </div>
       </div>
     </div>
   );
@@ -315,6 +354,7 @@ function TagInput({
   input,
   setInput,
   setTags,
+  suggestions,
   color,
 }: {
   label: string;
@@ -323,15 +363,23 @@ function TagInput({
   input: string;
   setInput: (s: string) => void;
   setTags: (t: string[]) => void;
+  suggestions: readonly string[];
   color: string;
 }) {
   const commitTag = () => {
     const value = input.trim().replace(/,$/, '');
-    if (value && !tags.includes(value)) {
+    if (!value) return;
+    if (!tags.includes(value)) {
       setTags([...tags, value]);
     }
-    if (input !== '') {
-      setInput('');
+    setInput('');
+  };
+
+  const toggleSuggestion = (suggestion: string) => {
+    if (tags.includes(suggestion)) {
+      setTags(tags.filter((x) => x !== suggestion));
+    } else {
+      setTags([...tags, suggestion]);
     }
   };
 
@@ -347,6 +395,7 @@ function TagInput({
             >
               {t}
               <button
+                type="button"
                 onClick={() => setTags(tags.filter((x) => x !== t))}
                 className="text-white/55 hover:text-white"
               >
@@ -355,27 +404,70 @@ function TagInput({
             </span>
           ))}
         </div>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder={placeholder}
-          className="w-full bg-transparent px-1 text-[13px] text-white placeholder:text-white/30 focus:outline-none"
-          onBlur={commitTag}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' || e.key === ',') {
-              e.preventDefault();
-              commitTag();
-            }
-          }}
-        />
-        <div className="mt-2 flex justify-end">
-          <button
-            type="button"
-            onClick={commitTag}
-            className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] text-white/70 hover:bg-white/[0.08]"
+        <div className="mb-2.5">
+          <div className="mb-1.5 font-mono text-[9px] uppercase tracking-[0.2em] text-white/35">
+            よく選ばれる候補
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.map((s) => {
+              const selected = tags.includes(s);
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => toggleSuggestion(s)}
+                  className={`rounded-full border px-2.5 py-0.5 text-[11px] transition-colors ${
+                    selected
+                      ? 'bg-white/[0.08] text-white'
+                      : 'border-white/12 bg-white/[0.02] text-white/60 hover:border-white/25 hover:bg-white/[0.05] hover:text-white/85'
+                  }`}
+                  style={
+                    selected
+                      ? { borderColor: color, color }
+                      : undefined
+                  }
+                >
+                  {s}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+        <div className="border-t border-white/10 pt-3">
+          <div className="mb-1.5 flex items-center justify-between gap-2">
+            <span className="font-mono text-[9px] uppercase tracking-[0.2em] text-white/45">
+              自由入力
+            </span>
+            <span className="text-[10px] text-white/35">Enter で追加</span>
+          </div>
+          <div
+            className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/25 px-3 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] focus-within:border-[var(--tag-accent)] focus-within:ring-1 focus-within:ring-[var(--tag-accent)]/40"
+            style={{ ['--tag-accent' as string]: color }}
           >
-            追加
-          </button>
+            <input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder={placeholder}
+              aria-label={`${label}を入力`}
+              className="min-w-0 flex-1 bg-transparent py-2.5 text-[13px] text-white placeholder:text-white/40 focus:outline-none"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  commitTag();
+                }
+              }}
+            />
+            <button
+              type="button"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={commitTag}
+              disabled={!input.trim()}
+              className="shrink-0 rounded-lg border border-white/20 bg-white/[0.08] px-3 py-1.5 text-[11px] font-medium text-white/90 transition-colors hover:bg-white/[0.14] disabled:cursor-not-allowed disabled:border-white/10 disabled:bg-transparent disabled:text-white/35"
+              style={input.trim() ? { borderColor: color, color } : undefined}
+            >
+              追加
+            </button>
+          </div>
         </div>
       </div>
     </Field>

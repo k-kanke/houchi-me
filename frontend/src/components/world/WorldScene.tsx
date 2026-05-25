@@ -50,6 +50,7 @@ export default function WorldScene() {
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
   const clone = useAppStore((s) => s.clone);
+  const playerName = clone?.name ?? 'Mira';
   const encounter = useAppStore((s) => s.encounter);
   // クローンの likes にマッチした部屋だけ表示。同じ likes に対しては同一参照
   const activeRooms = useMemo(
@@ -649,7 +650,7 @@ export default function WorldScene() {
     const avatars: WorldAvatarState[] = [
       {
         id: 'mira',
-        name: 'Mira',
+        name: playerName,
         position: [nextPos.x, nextPos.y, nextPos.z],
         rotationY: desiredRot,
         activity,
@@ -714,7 +715,7 @@ export default function WorldScene() {
       <Particles />
 
       <Avatar
-        name="Mira"
+        name={playerName}
         palette={PALETTES.mira}
         position={miraPos}
         rotationY={miraRot}

@@ -10,6 +10,7 @@ export default function MiniMap() {
   const ref = useRef<HTMLCanvasElement | null>(null);
   const avatars = useAppStore((s) => s.worldAvatars);
   const speaker = useAppStore((s) => s.currentSpeaker);
+  const playerName = useAppStore((s) => s.clone?.name ?? 'Mira');
 
   useEffect(() => {
     const canvas = ref.current;
@@ -78,7 +79,7 @@ export default function MiniMap() {
           : [
               {
                 id: 'mira',
-                name: 'Mira',
+                name: playerName,
                 position: [0, 0, 0] as [number, number, number],
                 rotationY: 0,
                 activity: '',
@@ -127,7 +128,7 @@ export default function MiniMap() {
     };
     draw();
     return () => cancelAnimationFrame(raf);
-  }, [avatars, speaker]);
+  }, [avatars, speaker, playerName]);
 
   return (
     <div className="glass rounded-2xl p-3">

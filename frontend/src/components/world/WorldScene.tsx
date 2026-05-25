@@ -42,7 +42,7 @@ const NPC_IDLE_MIN_S = 1.8; // 目的地到達後の待機時間
 const NPC_IDLE_MAX_S = 4;
 const AUTO_CYCLE = STAY_DURATION + TRAVEL_DURATION;
 /** デフォルトの第三者カメラ距離（ズーム基準） */
-const DEFAULT_THIRD_CAMERA_DIST = 5.4;
+const DEFAULT_THIRD_CAMERA_DIST = 7.0;
 /** Auto 時の向き補間（大きいほど素早く追従） */
 const AUTO_ROT_SMOOTH = 3.2;
 
@@ -884,7 +884,7 @@ export default function WorldScene() {
         minPolarAngle={0.35}
         maxPolarAngle={Math.PI / 2 - 0.08}
         minDistance={2.5}
-        maxDistance={7.5}
+        maxDistance={9.5}
       />
       <ambientLight intensity={0.35} color="#a378ff" />
       <hemisphereLight args={['#a378ff', '#06060c', 0.6]} />

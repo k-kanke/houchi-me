@@ -168,7 +168,7 @@ export const useAppStore = create<AppState>((set) => ({
   chatPanelOpen: true,
   hudMenuOpen: true,
   mobileNavOpen: false,
-  thirdCameraDistance: 5.4,
+  thirdCameraDistance: 7.0,
   cameraFollowAgent: true,
   chatTrigger: null,
   myFriendId: generateFriendId(),
@@ -220,7 +220,7 @@ export const useAppStore = create<AppState>((set) => ({
   adjustThirdCameraDistance: (delta) =>
     set((s) => ({
       thirdCameraDistance: Math.min(
-        7.5,
+        9.5,
         Math.max(2.5, Number((s.thirdCameraDistance + delta).toFixed(2))),
       ),
     })),

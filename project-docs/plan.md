@@ -42,7 +42,7 @@
 | Supabase / AI | **未接続（手順は確立）** | `frontend/NEXT_STEPS.md`（A: Claude / B: Supabase）、`backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql` |
 | DB スキーマ | **houchi-me 用に置換済み** | `profiles` / `clones` / `topics` / `messages` / `feedback` + RLS + `handle_new_user` トリガ |
 | **Claude API / エージェント LLM** | **未着手（差し替え 1 行で完了）** | `frontend/src/lib/clone-engine.ts` 末尾 `export const engine` を `ClaudeApiImpl` へ |
-| デプロイ | `vercel.json`（framework=nextjs）・Dockerfile/docker-compose 更新済み | `frontend/vercel.json`, `frontend/Dockerfile`, `frontend/docker-compose.yml` |
+| デプロイ | `vercel.json`（framework=nextjs）更新済み | `frontend/vercel.json` |
 | CI / Preview | `cache-dependency-path: frontend/package-lock.json` のまま動作、env を `NEXT_PUBLIC_SUPABASE_*` に更新 | `.github/workflows/ci.yml`, `cd.yml` |
 
 **まだ Must として未達のもの**: Supabase 接続（`SupabaseImpl` の本体実装）、**Claude API によるクローンエージェント**（Topic・チャット・1日シミュレーション）、毎日の質問、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A 系で Vite に積んでいた WASD 操作・興味マップ画面・タイムライン画面は再移植が必要。**
@@ -235,7 +235,7 @@ flowchart TB
 | LLM | `CloneEngine` インターフェース（`LLMMockImpl` 既定 / `ClaudeApiImpl` 差し替え） | `frontend/src/lib/clone-engine.ts` — 末尾 1 行で切替 |
 | バック | Supabase（Auth / DB / Realtime / Edge Functions） | 旧 Curio スキーマは削除、`profiles/clones/topics/messages/feedback` に置換済み |
 | AI | **Anthropic Claude API**（`claude-opus-4-7` 等）— Next.js API Route 経由でキーを秘匿 | 手順は [`frontend/NEXT_STEPS.md`](../frontend/NEXT_STEPS.md) §A。Edge Function 経由も可。`ANTHROPIC_API_KEY` を Vercel/Supabase Secret |
-| インフラ | Vercel（root=`frontend`、Next.js auto-detect）+ Supabase Cloud + 任意 Docker | `frontend/Dockerfile`（multi-stage: dev / build / production の next start） |
+| インフラ | Vercel（root=`frontend`、Next.js auto-detect）+ Supabase Cloud | `frontend/vercel.json` |
 
 ### 1.2 画面ルーティング（MVP）
 
@@ -522,7 +522,7 @@ flowchart LR
 ```
 frontend/
 ├── next.config.ts / tsconfig.json / eslint.config.mjs / postcss.config.mjs
-├── Dockerfile / docker-compose.yml / vercel.json / .env.example
+├── vercel.json / .env.example
 ├── public/                       # static SVGs
 └── src/
     ├── app/
@@ -732,4 +732,4 @@ frontend/
 | 2026-05-25 | クローン手動操作（Phase C2 `HO-219`〜`HO-224`）、§0.4 スプリント 2.5 を追加 |
 | 2026-05-25 | デプロイ（Phase G 拡充 `HO-606`〜`HO-610`）、デザイン/UI（Phase H `HO-701`〜`HO-710`）、README 担当割り振り |
 | 2026-05-25 | §0.4・§5 全タスク表に担当者氏名列を追加 |
-| 2026-05-25 | **Milestone B**：`houchi-me/` (Next.js 16 + R3F + Zustand + TS) を `frontend/` に昇格し旧 Vite フロントと統合、`houchi-me/` 削除。backend Supabase を houchi-me スキーマ (`profiles/clones/topics/messages/feedback`) に全面置換。AI プロバイダを Gemini → **Claude API** に変更（接続抽象は `frontend/src/lib/clone-engine.ts`）。Dockerfile/docker-compose/vercel.json/CI env を Next.js 用に更新、root の `node_modules` 削除し `frontend/` で再 install。§0.3 / §1.1 / §2 / §3 / §6 / §10 / §11 を全面改訂 |
+| 2026-05-25 | **Milestone B**：`houchi-me/` (Next.js 16 + R3F + Zustand + TS) を `frontend/` に昇格し旧 Vite フロントと統合、`houchi-me/` 削除。backend Supabase を houchi-me スキーマ (`profiles/clones/topics/messages/feedback`) に全面置換。AI 接続抽象を `frontend/src/lib/clone-engine.ts` に集約し、`vercel.json` と CI env を Next.js 用に更新、root の `node_modules` 削除し `frontend/` で再 install。§0.3 / §1.1 / §2 / §3 / §6 / §10 / §11 を全面改訂 |

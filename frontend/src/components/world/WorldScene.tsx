@@ -49,6 +49,7 @@ export default function WorldScene() {
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
   const clone = useAppStore((s) => s.clone);
+  const encounter = useAppStore((s) => s.encounter);
   // クローンの likes にマッチした部屋だけ表示。同じ likes に対しては同一参照
   const activeRooms = useMemo(
     () => getActiveRooms(clone?.likes ?? []),
@@ -93,6 +94,9 @@ export default function WorldScene() {
   // アイドル揺らぎ用の Vector3 ref（一度作って毎フレーム書き換える）
   const sageAnimatedPos = useRef(new THREE.Vector3());
   const echoAnimatedPos = useRef(new THREE.Vector3());
+  // エンカウント中のアバターのライブ位置（集会場から接近 → 終了後に帰還）
+  const encounterLivePos = useRef(new THREE.Vector3(2.3, 0, 5.0));
+  const encounterAvatarNameRef = useRef<'Sage' | 'Echo' | null>(null);
   // 部屋住人の現在位置（部屋中心の周辺を歩き回る）
   const residentLive = useRef<
     {
@@ -215,6 +219,15 @@ export default function WorldScene() {
     const id = setInterval(rotateAgents, AGENT_ROTATION_MS);
     return () => clearInterval(id);
   }, [rotateAgents, roomConversationId]);
+
+  // エンカウント開始時にアバターのライブ位置を初期化
+  useEffect(() => {
+    if (!encounter) return;
+    encounterAvatarNameRef.current = encounter.avatarName as 'Sage' | 'Echo';
+    encounterLivePos.current.copy(
+      encounter.avatarName === 'Sage' ? sagePos : echoPos,
+    );
+  }, [encounter?.sessionId, sagePos, echoPos]);
 
   // conversation cycle
   useEffect(() => {
@@ -348,6 +361,16 @@ export default function WorldScene() {
         activity = '待機中（手動モード）';
       }
       if (miraActivity !== activity) setMiraActivity(activity);
+    } else if (encounter) {
+      // エンカウント中: 自動モードでMiraを停止させ、相手を向かせる
+      startTime.current = null;
+      nextPos = miraPos;
+      desiredRot = Math.atan2(
+        encounterLivePos.current.x - miraPos.x,
+        encounterLivePos.current.z - miraPos.z,
+      );
+      activity = `会話中 · ${encounter.avatarName}`;
+      if (miraActivity !== activity) setMiraActivity(activity);
     } else {
       if (startTime.current === null) startTime.current = t;
       const elapsed = t - startTime.current;
@@ -430,6 +453,21 @@ export default function WorldScene() {
         desiredRot = miraConversationRot;
         setMiraRot(miraConversationRot);
       }
+    } else if (encounter && encounterAvatarNameRef.current) {
+      // エンカウント中: 相手アバターはMiraを向く、もう一方はデフォルト
+      if (encounter.avatarName === 'Sage') {
+        sagerot = Math.atan2(
+          nextPos.x - encounterLivePos.current.x,
+          nextPos.z - encounterLivePos.current.z,
+        );
+        echorot = Math.atan2(sagePos.x - echoPos.x, sagePos.z - echoPos.z);
+      } else {
+        echorot = Math.atan2(
+          nextPos.x - encounterLivePos.current.x,
+          nextPos.z - encounterLivePos.current.z,
+        );
+        sagerot = Math.atan2(echoPos.x - sagePos.x, echoPos.z - sagePos.z);
+      }
     } else {
       // 会話なし: Sage と Echo はお互いを見て待っている（デフォルトの待機ポーズ）
       sagerot = Math.atan2(echoPos.x - sagePos.x, echoPos.z - sagePos.z);
@@ -479,17 +517,41 @@ export default function WorldScene() {
       setNearestRoomId(nearestId);
     }
 
-    // アイドル揺らぎ: Sage/Echo と現在場にいる部屋アバターをゆっくり動かす
-    sageAnimatedPos.current.set(
-      sagePos.x + Math.sin(t * 0.42) * WANDER_RADIUS_MEETING,
-      0,
-      sagePos.z + Math.cos(t * 0.33 + 0.6) * WANDER_RADIUS_MEETING * 0.6,
-    );
-    echoAnimatedPos.current.set(
-      echoPos.x + Math.sin(t * 0.38 + 1.5) * WANDER_RADIUS_MEETING,
-      0,
-      echoPos.z + Math.cos(t * 0.46 + 1.5) * WANDER_RADIUS_MEETING * 0.6,
-    );
+    // アイドル揺らぎ: エンカウント中のアバターは揺らぎをスキップ
+    if (encounterAvatarNameRef.current !== 'Sage') {
+      sageAnimatedPos.current.set(
+        sagePos.x + Math.sin(t * 0.42) * WANDER_RADIUS_MEETING,
+        0,
+        sagePos.z + Math.cos(t * 0.33 + 0.6) * WANDER_RADIUS_MEETING * 0.6,
+      );
+    }
+    if (encounterAvatarNameRef.current !== 'Echo') {
+      echoAnimatedPos.current.set(
+        echoPos.x + Math.sin(t * 0.38 + 1.5) * WANDER_RADIUS_MEETING,
+        0,
+        echoPos.z + Math.cos(t * 0.46 + 1.5) * WANDER_RADIUS_MEETING * 0.6,
+      );
+    }
+
+    // エンカウントアバターの接近 / 帰還アニメーション
+    const ENCOUNTER_STOP_DIST = 1.8;
+    if (encounter && encounterAvatarNameRef.current) {
+      const toMira = nextPos.clone().sub(encounterLivePos.current);
+      const dist = toMira.length();
+      if (dist > ENCOUNTER_STOP_DIST + 0.05) {
+        const target = nextPos.clone().sub(
+          toMira.normalize().multiplyScalar(ENCOUNTER_STOP_DIST),
+        );
+        encounterLivePos.current.lerp(target, Math.min(1, delta * 1.5));
+      }
+    } else if (!encounter && encounterAvatarNameRef.current) {
+      const base = encounterAvatarNameRef.current === 'Sage' ? sagePos : echoPos;
+      encounterLivePos.current.lerp(base, Math.min(1, delta * 0.8));
+      if (encounterLivePos.current.distanceTo(base) < 0.15) {
+        encounterLivePos.current.copy(base);
+        encounterAvatarNameRef.current = null;
+      }
+    }
     // 部屋住人: 部屋中心の周辺をミラと同じ方式で歩き回る
     const newResRots = residentRots.slice();
     let resRotsChanged = false;
@@ -677,14 +739,12 @@ export default function WorldScene() {
         rotationY={miraRot}
         activity={miraActivity}
         speaking={!roomConversationId && speakerIdx === 0}
-        speech={
-          !roomConversationId && speakerIdx === 0 ? speech : undefined
-        }
+        speech={!roomConversationId && speakerIdx === 0 ? speech : undefined}
       />
       <Avatar
         name="Sage"
         palette={PALETTES.sage}
-        position={sageAnimatedPos.current}
+        position={encounterAvatarNameRef.current === 'Sage' ? encounterLivePos.current : sageAnimatedPos.current}
         rotationY={sageRot}
         activity="対話"
         speaking={speakerIdx === 1}
@@ -693,7 +753,7 @@ export default function WorldScene() {
       <Avatar
         name="Echo"
         palette={PALETTES.echo}
-        position={echoAnimatedPos.current}
+        position={encounterAvatarNameRef.current === 'Echo' ? encounterLivePos.current : echoAnimatedPos.current}
         rotationY={echoRot}
         activity="対話"
         speaking={speakerIdx === 2}

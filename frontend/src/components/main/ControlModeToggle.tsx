@@ -1,18 +1,16 @@
 'use client';
 
 import { useAppStore } from '@/lib/store';
-import type { CameraMode } from '@/types';
+import type { ControlMode } from '@/types';
 
-const MODES: { id: CameraMode; label: string; icon: string }[] = [
-  { id: 'follow', label: '追従', icon: '◉' },
-  { id: 'orbit', label: '軌道', icon: '◯' },
-  { id: 'top', label: '俯瞰', icon: '▢' },
-  { id: 'cinema', label: 'シネマ', icon: '▷' },
+const MODES: { id: ControlMode; label: string; icon: string }[] = [
+  { id: 'auto', label: '放置', icon: '☾' },
+  { id: 'manual', label: '手動', icon: '✦' },
 ];
 
-export default function CameraButtons() {
-  const mode = useAppStore((s) => s.cameraMode);
-  const setMode = useAppStore((s) => s.setCameraMode);
+export default function ControlModeToggle() {
+  const mode = useAppStore((s) => s.controlMode);
+  const setMode = useAppStore((s) => s.setControlMode);
 
   return (
     <div className="glass flex flex-col gap-1 rounded-2xl p-2">

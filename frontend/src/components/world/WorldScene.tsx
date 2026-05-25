@@ -18,6 +18,7 @@ export default function WorldScene() {
   const setWorldAvatars = useAppStore((s) => s.setWorldAvatars);
   const setCurrentSpeaker = useAppStore((s) => s.setCurrentSpeaker);
   const currentSpeaker = useAppStore((s) => s.currentSpeaker);
+  const controlMode = useAppStore((s) => s.controlMode);
 
   const startTime = useRef<number | null>(null);
   const [miraPos, setMiraPos] = useState(WAYPOINTS[0].pos.clone());
@@ -40,40 +41,52 @@ export default function WorldScene() {
 
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    if (startTime.current === null) startTime.current = t;
-    const elapsed = t - startTime.current;
-    const cycle = STAY_DURATION + TRAVEL_DURATION;
-    const total = WAYPOINTS.length * cycle;
-    const pos = elapsed % total;
-    const wpIndex = Math.floor(pos / cycle);
-    const localTime = pos % cycle;
-    const fromWp = WAYPOINTS[wpIndex];
-    const toWp = WAYPOINTS[(wpIndex + 1) % WAYPOINTS.length];
 
     let nextPos: THREE.Vector3;
+    let desiredRot: number;
     let activity: string;
-    if (localTime < STAY_DURATION) {
-      nextPos = fromWp.pos.clone();
-      activity = fromWp.activity;
+
+    if (controlMode === 'manual') {
+      // 手動モード: 自動巡回を停止し、現在地で待機。HO-220 で WASD 入力を実装予定
+      startTime.current = null;
+      nextPos = miraPos;
+      desiredRot = miraRot;
+      activity = '待機中（手動モード）';
+      if (miraActivity !== activity) setMiraActivity(activity);
     } else {
-      const k = (localTime - STAY_DURATION) / TRAVEL_DURATION;
-      nextPos = fromWp.pos.clone().lerp(toWp.pos, k);
-      activity = `${fromWp.name} → ${toWp.name}`;
+      if (startTime.current === null) startTime.current = t;
+      const elapsed = t - startTime.current;
+      const cycle = STAY_DURATION + TRAVEL_DURATION;
+      const total = WAYPOINTS.length * cycle;
+      const pos = elapsed % total;
+      const wpIndex = Math.floor(pos / cycle);
+      const localTime = pos % cycle;
+      const fromWp = WAYPOINTS[wpIndex];
+      const toWp = WAYPOINTS[(wpIndex + 1) % WAYPOINTS.length];
+
+      if (localTime < STAY_DURATION) {
+        nextPos = fromWp.pos.clone();
+        activity = fromWp.activity;
+      } else {
+        const k = (localTime - STAY_DURATION) / TRAVEL_DURATION;
+        nextPos = fromWp.pos.clone().lerp(toWp.pos, k);
+        activity = `${fromWp.name} → ${toWp.name}`;
+      }
+      setMiraPos((cur) => {
+        if (cur.distanceTo(nextPos) < 0.001) return cur;
+        return nextPos;
+      });
+      const dir = toWp.pos.clone().sub(fromWp.pos);
+      desiredRot =
+        localTime < STAY_DURATION
+          ? Math.atan2(
+              -fromWp.pos.x || 0.001,
+              -fromWp.pos.z || 0.001,
+            )
+          : Math.atan2(dir.x, dir.z);
+      setMiraRot(desiredRot);
+      setMiraActivity(activity);
     }
-    setMiraPos((cur) => {
-      if (cur.distanceTo(nextPos) < 0.001) return cur;
-      return nextPos;
-    });
-    const dir = toWp.pos.clone().sub(fromWp.pos);
-    const desiredRot =
-      localTime < STAY_DURATION
-        ? Math.atan2(
-            -fromWp.pos.x || 0.001,
-            -fromWp.pos.z || 0.001,
-          )
-        : Math.atan2(dir.x, dir.z);
-    setMiraRot(desiredRot);
-    setMiraActivity(activity);
 
     // sage/echo face the current speaker
     const speakers: Record<string, THREE.Vector3> = {

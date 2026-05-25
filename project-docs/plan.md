@@ -649,7 +649,7 @@ frontend/
 - [x] HO-208（吹き出し会話：固定 → LLM 差替は HO-115）
 
 ### Phase C2 — クローン操作感（**Next.js 移行で未移植 — 要再実装**）
-- [ ] HO-219（旧 Vite 版にあった放置／手動トグル。R3F 版は未着手）
+- [x] HO-219（放置／手動モード切替トグル + 自動巡回停止 + カメラモード簡素化）
 - [ ] HO-220（WASD/矢印 — R3F の `useFrame` + `KeyboardControls` で再実装）
 - [ ] HO-221（クリック移動 Raycaster — drei の `useThree` で実装）
 - [ ] HO-222（最寄りロケーション HUD）

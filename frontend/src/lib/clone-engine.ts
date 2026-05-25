@@ -1,6 +1,8 @@
+import { getSupabase } from '@/lib/supabase';
 import type { Clone, Message, Topic } from '@/types';
 
 export interface CloneEngine {
+  readonly persistsMessages?: boolean;
   generateTodaysTopic(clone: Clone, history: Topic[]): Promise<Topic>;
   chatStream(
     clone: Clone,
@@ -188,6 +190,25 @@ function delay(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
 
+function chunkText(text: string, size = 14): string[] {
+  const chunks: string[] = [];
+  for (let index = 0; index < text.length; index += size) {
+    chunks.push(text.slice(index, index + size));
+  }
+  return chunks.length > 0 ? chunks : [''];
+}
+
+function isTopicShape(value: unknown): value is Omit<Topic, 'id' | 'dateKey' | 'createdAt'> & Partial<Topic> {
+  if (!value || typeof value !== 'object') return false;
+  const topic = value as Record<string, unknown>;
+  return (
+    typeof topic.title === 'string' &&
+    typeof topic.reasoning === 'string' &&
+    Array.isArray(topic.explorationPath) &&
+    Array.isArray(topic.relatedConcepts)
+  );
+}
+
 export class LLMMockImpl implements CloneEngine {
   async generateTodaysTopic(clone: Clone, history: Topic[]): Promise<Topic> {
     await delay(500);
@@ -234,4 +255,61 @@ export class LLMMockImpl implements CloneEngine {
   }
 }
 
-export const engine: CloneEngine = new LLMMockImpl();
+export class SupabaseEdgeFunctionImpl implements CloneEngine {
+  readonly persistsMessages = true;
+
+  async generateTodaysTopic(clone: Clone, _history: Topic[]): Promise<Topic> {
+    const { data, error } = await getSupabase().functions.invoke('simulate-clone-day', {
+      body: { cloneId: clone.id },
+    });
+
+    if (error) {
+      throw new Error(`simulate-clone-day failed: ${error.message}`);
+    }
+
+    if (!isTopicShape(data)) {
+      throw new Error('simulate-clone-day returned an invalid topic payload');
+    }
+
+    return {
+      id: typeof data.id === 'string' ? data.id : uuid(),
+      dateKey: typeof data.dateKey === 'string' ? data.dateKey : todayKey(),
+      title: data.title,
+      reasoning: data.reasoning,
+      explorationPath: data.explorationPath,
+      relatedConcepts: data.relatedConcepts,
+      createdAt: typeof data.createdAt === 'string' ? data.createdAt : new Date().toISOString(),
+    };
+  }
+
+  async *chatStream(clone: Clone, _history: Message[], userText: string): AsyncIterable<string> {
+    const { data, error } = await getSupabase().functions.invoke('clone-chat', {
+      body: {
+        cloneId: clone.id,
+        userText,
+      },
+    });
+
+    if (error) {
+      throw new Error(`clone-chat failed: ${error.message}`);
+    }
+
+    const reply = typeof data?.reply === 'string' ? data.reply : '';
+    if (!reply) {
+      throw new Error('clone-chat returned an empty reply');
+    }
+
+    for (const chunk of chunkText(reply)) {
+      yield chunk;
+      await delay(18);
+    }
+  }
+}
+
+const isSupabaseConfigured =
+  !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+  !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+export const engine: CloneEngine = isSupabaseConfigured
+  ? new SupabaseEdgeFunctionImpl()
+  : new LLMMockImpl();

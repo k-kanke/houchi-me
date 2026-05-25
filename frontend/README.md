@@ -4,7 +4,7 @@
 > 放置しておくほど、あなたが広がる。
 
 クローンAI × 3D仮想世界「叡智の図書館（Sapientia）」の **ローカル限定MVP** です。
-データ永続化は localStorage、LLMはモック実装。後で Supabase / Claude API に切り替える前提で、Interface で抽象化されています。
+データ永続化は localStorage、LLM はモック実装です。後で Supabase / Gemini Edge Functions に切り替える前提で、Interface で抽象化されています。
 
 ## 起動
 
@@ -66,7 +66,7 @@ export const storage: Storage = new LocalStorageImpl();
 
 // src/lib/clone-engine.ts
 export const engine: CloneEngine = new LLMMockImpl();
-// ← この 1 行を ClaudeApiImpl に変えれば本物の Claude が返答
+// ← Supabase 設定を入れると SupabaseEdgeFunctionImpl 経由で Gemini が返答
 ```
 
 ## 操作のヒント
@@ -78,7 +78,7 @@ export const engine: CloneEngine = new LLMMockImpl();
 
 ## 次のステップ
 
-本番化（Claude API / Supabase / Vercel）への移行手順は [NEXT_STEPS.md](./NEXT_STEPS.md) を参照してください。
+本番化（Gemini / Supabase Edge Functions / Vercel）への移行手順は [NEXT_STEPS.md](./NEXT_STEPS.md) を参照してください。
 
 ## 技術スタック
 

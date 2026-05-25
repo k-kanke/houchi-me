@@ -70,7 +70,7 @@ create table if not exists public.clones (
   ideal_self          text not null default '',
   personality_shift   text not null default 'stay',
   exploration_type    text not null default 'depth',
-  sync_rate           numeric(5,2) not null default 99.0,
+  sync_rate           numeric(5,2) not null default 99.0 check (sync_rate between 0 and 100),
   created_at          timestamptz not null default now(),
   updated_at          timestamptz not null default now(),
   unique (user_id)

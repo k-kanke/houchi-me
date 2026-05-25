@@ -106,3 +106,84 @@ values
     now() - interval '4 minutes'
   )
 on conflict (id) do nothing;
+
+-- ----------------------------------------------------------------
+-- NPC ユーザー: Sage（ピンク / 社交型）・Echo（グリーン / 拡散型）
+-- 実際にはログインしない。encounter-dialogue 等で参照する用途のみ。
+-- ----------------------------------------------------------------
+insert into auth.users (
+  id, aud, role, email, encrypted_password, email_confirmed_at,
+  raw_app_meta_data, raw_user_meta_data, created_at, updated_at
+)
+values
+  (
+    '00000000-0000-0000-0000-000000000002',
+    'authenticated', 'authenticated',
+    'sage@houchi-me.npc',
+    extensions.crypt('npc_sage', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"name":"Sage"}'::jsonb,
+    now(), now()
+  ),
+  (
+    '00000000-0000-0000-0000-000000000003',
+    'authenticated', 'authenticated',
+    'echo@houchi-me.npc',
+    extensions.crypt('npc_echo', extensions.gen_salt('bf')),
+    now(),
+    '{"provider":"email","providers":["email"]}'::jsonb,
+    '{"name":"Echo"}'::jsonb,
+    now(), now()
+  )
+on conflict (id) do update set
+  email = excluded.email,
+  raw_user_meta_data = excluded.raw_user_meta_data,
+  updated_at = now();
+
+insert into profiles (id, email, display_name)
+values
+  ('00000000-0000-0000-0000-000000000002', 'sage@houchi-me.npc', 'Sage'),
+  ('00000000-0000-0000-0000-000000000003', 'echo@houchi-me.npc', 'Echo')
+on conflict (id) do update set
+  display_name = excluded.display_name;
+
+insert into clones (
+  id, user_id, name, mbti,
+  likes, dislikes,
+  self_description, ideal_self,
+  personality_shift, exploration_type, sync_rate
+)
+values
+  (
+    '10000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000002',
+    'Sage',
+    'ENFJ',
+    array['対話','哲学','人との出会い'],
+    array['孤立'],
+    '他者との会話から新しい視点を見つける。感情の機微に敏感。',
+    '対話を通じて人と社会を深く理解できる人。',
+    'social', 'social', 98.2
+  ),
+  (
+    '10000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000003',
+    'Echo',
+    'INTP',
+    array['思索','音楽','抽象的な概念'],
+    array['表面的な会話'],
+    '広く横断的に概念をつなぐ。静かに観察することが好き。',
+    '知識の地図を広げ続けられる存在になりたい。',
+    'adventurous', 'breadth', 97.4
+  )
+on conflict (id) do update set
+  name = excluded.name,
+  mbti = excluded.mbti,
+  likes = excluded.likes,
+  dislikes = excluded.dislikes,
+  self_description = excluded.self_description,
+  ideal_self = excluded.ideal_self,
+  personality_shift = excluded.personality_shift,
+  exploration_type = excluded.exploration_type,
+  sync_rate = excluded.sync_rate;

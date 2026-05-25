@@ -162,7 +162,7 @@ export const useAppStore = create<AppState>((set) => ({
   bootDone: false,
   hydrated: false,
   openOverlay: null,
-  chatPanelOpen: false,
+  chatPanelOpen: true,
   hudMenuOpen: true,
   mobileNavOpen: false,
   thirdCameraDistance: 4.1,

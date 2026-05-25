@@ -174,7 +174,6 @@ export default function ControlPad({ embedded = false }: { embedded?: boolean })
           Move
         </div>
         <div className="flex justify-center">{stickArea}</div>
-        <p className="mt-2 text-center text-[10px] text-white/40">WASD またはスティック</p>
       </div>
     );
   }

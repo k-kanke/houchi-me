@@ -40,6 +40,55 @@ const FREE_STEP_MAX = 10; // 次の目的地までの距離（最大）
 const RESIDENT_WANDER_RADIUS = 2.6; // 部屋住人が歩き回る半径
 const NPC_IDLE_MIN_S = 1.8; // 目的地到達後の待機時間
 const NPC_IDLE_MAX_S = 4;
+const AUTO_CYCLE = STAY_DURATION + TRAVEL_DURATION;
+
+/** 自動巡回パス上で pos に最も近い地点のウェイポイント index と経過時間 */
+function nearestWaypointOnPath(pos: THREE.Vector3): {
+  index: number;
+  elapsed: number;
+} {
+  let bestIndex = 0;
+  let bestElapsed = 0;
+  let bestDistSq = Infinity;
+
+  for (let i = 0; i < WAYPOINTS.length; i++) {
+    const from = WAYPOINTS[i].pos;
+    const to = WAYPOINTS[(i + 1) % WAYPOINTS.length].pos;
+    const cycleBase = i * AUTO_CYCLE;
+
+    const stayD = pos.distanceToSquared(from);
+    if (stayD < bestDistSq) {
+      bestDistSq = stayD;
+      bestIndex = i;
+      bestElapsed = cycleBase;
+    }
+
+    const seg = to.clone().sub(from);
+    const lenSq = seg.lengthSq();
+    if (lenSq > 1e-6) {
+      const tProj = Math.max(
+        0,
+        Math.min(1, pos.clone().sub(from).dot(seg) / lenSq),
+      );
+      const onSeg = from.clone().lerp(to, tProj);
+      const d = pos.distanceToSquared(onSeg);
+      if (d < bestDistSq) {
+        bestDistSq = d;
+        bestIndex = i;
+        bestElapsed = cycleBase + STAY_DURATION + tProj * TRAVEL_DURATION;
+      }
+    }
+  }
+
+  return { index: bestIndex, elapsed: bestElapsed };
+}
+
+interface AutoPathTransition {
+  from: THREE.Vector3;
+  to: THREE.Vector3;
+  startT: number;
+  afterIndex: number;
+}
 
 export default function WorldScene() {
   const setWorldAvatars = useAppStore((s) => s.setWorldAvatars);
@@ -73,6 +122,8 @@ export default function WorldScene() {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const initialized = useRef(false);
+  const prevControlModeRef = useRef(controlMode);
+  const autoTransition = useRef<AutoPathTransition | null>(null);
   const cameraOffset = useRef(new THREE.Vector3());
   const cameraTarget = useRef(new THREE.Vector3());
   const cameraLookAt = useRef(new THREE.Vector3());
@@ -278,6 +329,40 @@ export default function WorldScene() {
     let desiredRot: number;
     let activity: string;
 
+    const canAutoPatrol =
+      !conversingRoomPos &&
+      !(chattingWithAgent && agentPos) &&
+      !encounter;
+
+    if (prevControlModeRef.current !== controlMode) {
+      if (
+        controlMode === 'auto' &&
+        prevControlModeRef.current === 'manual' &&
+        canAutoPatrol
+      ) {
+        const { index, elapsed } = nearestWaypointOnPath(miraPos);
+        const nextIdx = (index + 1) % WAYPOINTS.length;
+        const dest = WAYPOINTS[nextIdx].pos;
+        if (miraPos.distanceTo(dest) < 0.35) {
+          startTime.current = t - elapsed;
+          autoTransition.current = null;
+        } else {
+          autoTransition.current = {
+            from: miraPos.clone(),
+            to: dest.clone(),
+            startT: t,
+            afterIndex: nextIdx,
+          };
+          startTime.current = null;
+        }
+      }
+      if (controlMode === 'manual') {
+        autoTransition.current = null;
+        startTime.current = null;
+      }
+      prevControlModeRef.current = controlMode;
+    }
+
     if (conversingRoomPos && conversingRoom) {
       // 部屋アバターと 3D 会話中: その場で停止し、相手を向く
       startTime.current = null;
@@ -346,10 +431,25 @@ export default function WorldScene() {
       );
       activity = `会話中 · ${encounter.avatarName}`;
       if (miraActivity !== activity) setMiraActivity(activity);
+    } else if (autoTransition.current) {
+      const tr = autoTransition.current;
+      const k = Math.min(1, (t - tr.startT) / TRAVEL_DURATION);
+      nextPos = tr.from.clone().lerp(tr.to, k);
+      const dir = tr.to.clone().sub(tr.from);
+      desiredRot = dir.lengthSq() > 1e-6 ? Math.atan2(dir.x, dir.z) : miraRot;
+      activity = `移動中 · ${WAYPOINTS[tr.afterIndex].name}`;
+      setMiraPos(nextPos);
+      setMiraRot(desiredRot);
+      if (miraActivity !== activity) setMiraActivity(activity);
+      if (k >= 1) {
+        const { elapsed } = nearestWaypointOnPath(tr.to);
+        startTime.current = t - elapsed;
+        autoTransition.current = null;
+      }
     } else {
       if (startTime.current === null) startTime.current = t;
       const elapsed = t - startTime.current;
-      const cycle = STAY_DURATION + TRAVEL_DURATION;
+      const cycle = AUTO_CYCLE;
       const total = WAYPOINTS.length * cycle;
       const pos = elapsed % total;
       const wpIndex = Math.floor(pos / cycle);

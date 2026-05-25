@@ -57,10 +57,10 @@ export default function AppShell() {
     <div className="relative z-10 flex h-screen min-h-0">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar />
-        <div className="flex min-h-0 flex-1 flex-col lg:block">
+        <div className="flex min-h-0 flex-1 flex-col">
           <main
             ref={worldViewportRef}
-            className="relative h-[60%] min-h-0 shrink-0 overflow-hidden lg:h-auto lg:flex-1"
+            className="relative min-h-0 overflow-hidden max-lg:h-[60%] max-lg:shrink-0 lg:flex-1"
             data-world-viewport
           >
             <ThirdPersonZoomGesture viewportRef={worldViewportRef} />
@@ -80,7 +80,7 @@ export default function AppShell() {
               </div>
             </div>
           </main>
-          <div className="h-[40%] min-h-0 shrink-0 lg:hidden">
+          <div className="max-lg:h-[40%] min-h-0 max-lg:shrink-0 lg:hidden">
             <WorldHudMenuDock />
           </div>
         </div>

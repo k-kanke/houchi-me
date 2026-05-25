@@ -131,8 +131,11 @@ export default function ChatPanel() {
       />
       <aside
         aria-label="クローンチャット"
-        className={`fixed inset-y-0 right-0 z-40 flex h-full w-[min(380px,100vw)] shrink-0 flex-col border-l border-white/[0.06] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-transform duration-300 ease-out lg:static lg:z-auto lg:w-[380px] lg:translate-x-0 lg:shadow-none ${
-          chatPanelOpen ? 'translate-x-0' : 'translate-x-full'
+        aria-hidden={!chatPanelOpen}
+        className={`fixed inset-y-0 right-0 z-40 flex h-full shrink-0 flex-col overflow-hidden border-l border-white/[0.06] shadow-[-12px_0_40px_rgba(0,0,0,0.45)] transition-[transform,width] duration-300 ease-[cubic-bezier(0.33,1.1,0.68,1)] lg:static lg:z-auto lg:shadow-none ${
+          chatPanelOpen
+            ? 'w-[min(380px,100vw)] translate-x-0 lg:w-[380px]'
+            : 'pointer-events-none w-[min(380px,100vw)] translate-x-full lg:w-0 lg:translate-x-0 lg:border-0'
         }`}
         style={panelStyle}
       >
@@ -195,6 +198,7 @@ export default function ChatPanel() {
             onClick={() => setChatPanelOpen(false)}
             className="grid h-8 w-8 place-items-center rounded-full border border-white/10 bg-white/[0.04] text-white/70 hover:bg-white/[0.08] lg:hidden"
             aria-label="チャットを閉じる"
+            title="チャットを閉じる"
           >
             ×
           </button>

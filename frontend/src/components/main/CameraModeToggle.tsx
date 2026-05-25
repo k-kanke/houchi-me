@@ -50,14 +50,12 @@ export default function CameraModeToggle({ embedded = false }: { embedded?: bool
       <div className="mb-1 px-1 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
         Motion
       </div>
-      <div className="relative flex rounded-full border border-[#caa85e]/18 bg-black/25 p-[3px]">
-        <div
-          className="absolute bottom-[3px] top-[3px] w-[calc(50%-1.5px)] rounded-full border border-[#caa85e]/36 bg-[#201a12] shadow-[0_4px_14px_rgba(0,0,0,0.28)] transition-transform duration-200"
+      <div className="relative flex w-full rounded-full border border-[#caa85e]/18 bg-black/25 p-[3px]">
+        <span
+          aria-hidden
+          className="pointer-events-none absolute top-[3px] bottom-[3px] z-0 w-[calc(50%-4.5px)] rounded-full border border-[#caa85e]/36 bg-[#201a12] shadow-[0_4px_14px_rgba(0,0,0,0.28)] transition-[left] duration-300 ease-[cubic-bezier(0.33,1,0.68,1)]"
           style={{
-            transform:
-              controlMode === 'auto'
-                ? 'translateX(0)'
-                : 'translateX(calc(100% + 1.5px))',
+            left: controlMode === 'auto' ? '3px' : 'calc(50% + 1.5px)',
           }}
         />
         {CONTROL_MODES.map((mode) => (

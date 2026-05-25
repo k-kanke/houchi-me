@@ -12,9 +12,45 @@ const panelStyle = {
   WebkitBackdropFilter: 'blur(20px) saturate(170%)',
 } as const;
 
-function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
+/** メニューパネル開閉（にょーん） */
+const PANEL_EASE = 'cubic-bezier(0.33, 1.18, 0.68, 1)';
+const PANEL_TRANSITION_MS = 420;
+
+const SIDE_TAB_CLASS =
+  'relative flex w-9 shrink-0 flex-col items-center justify-center gap-1 rounded-l-2xl border border-white/[0.12] border-r-0 py-4 shadow-[-8px_0_24px_rgba(0,0,0,0.35)] transition-colors duration-200 hover:bg-white/[0.08]';
+
+function ChatSideTab() {
   const chatPanelOpen = useAppStore((s) => s.chatPanelOpen);
   const setChatPanelOpen = useAppStore((s) => s.setChatPanelOpen);
+
+  return (
+    <button
+      type="button"
+      onClick={() => setChatPanelOpen(!chatPanelOpen)}
+      className={`${SIDE_TAB_CLASS} z-[31]`}
+      style={panelStyle}
+      aria-label={chatPanelOpen ? 'チャットを閉じる' : 'チャットを開く'}
+      aria-expanded={chatPanelOpen}
+    >
+      <span className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/55 [writing-mode:vertical-rl]">
+        Chat
+      </span>
+      <span
+        className={`text-[16px] leading-none transition-transform duration-[420ms] ${
+          chatPanelOpen ? 'text-white/70' : 'text-[var(--color-neon-cyan)]'
+        }`}
+        style={{ transitionTimingFunction: PANEL_EASE }}
+        aria-hidden
+      >
+        {chatPanelOpen ? '›' : '‹'}
+      </span>
+    </button>
+  );
+}
+
+function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
+  const chatPanelOpen = useAppStore((s) => s.chatPanelOpen);
+  const toggleChatPanel = useAppStore((s) => s.toggleChatPanel);
   const controlMode = useAppStore((s) => s.controlMode);
   const encounter = useAppStore((s) => s.encounter);
   const clone = useAppStore((s) => s.clone);
@@ -23,7 +59,7 @@ function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
   const chatButton = (
     <button
       type="button"
-      onClick={() => setChatPanelOpen(true)}
+      onClick={() => toggleChatPanel()}
       className={`flex min-w-0 flex-col items-center gap-0.5 rounded-xl border text-center transition-colors ${
         showEncounterBtn ? 'w-full px-2 py-2' : 'w-full px-3 py-2.5'
       } ${
@@ -66,10 +102,6 @@ function HudMenuItems({ showChatEntry }: { showChatEntry: boolean }) {
 
       <CameraModeToggle embedded />
 
-      <p className="text-center text-[10px] leading-relaxed text-white/40">
-        2本指ピンチ / トラックパッドでズーム
-      </p>
-
       {controlMode === 'manual' ? <ControlPad embedded /> : null}
 
       {!showChatEntry ? <EncounterTrigger embedded /> : null}
@@ -88,13 +120,23 @@ function WorldHudMenuOverlay() {
       aria-label="ワールド操作メニュー"
     >
       <div
-        className={`overflow-hidden transition-[max-width] duration-300 ease-out ${
-          hudMenuOpen ? 'max-w-[min(280px,calc(100vw-2.75rem))]' : 'max-w-0'
-        }`}
+        className={`overflow-hidden will-change-[max-width,opacity] ${hudMenuOpen ? '' : 'pointer-events-none'}`}
+        style={{
+          maxWidth: hudMenuOpen ? 'min(280px, calc(100vw - 2.75rem))' : 0,
+          opacity: hudMenuOpen ? 1 : 0,
+          transition: `max-width ${PANEL_TRANSITION_MS}ms ${PANEL_EASE}, opacity ${PANEL_TRANSITION_MS * 0.75}ms ${PANEL_EASE}`,
+        }}
       >
         <div
-          className="w-[min(280px,calc(100vw-2.75rem))] space-y-3 rounded-l-2xl border border-white/[0.1] border-r-0 p-3 shadow-[-16px_0_48px_rgba(0,0,0,0.45)]"
-          style={panelStyle}
+          className="w-[min(280px,calc(100vw-2.75rem))] origin-right space-y-3 rounded-l-2xl border border-white/[0.1] border-r-0 p-3 shadow-[-16px_0_48px_rgba(0,0,0,0.45)] will-change-transform"
+          style={{
+            ...panelStyle,
+            transform: hudMenuOpen
+              ? 'translateX(0) scale(1)'
+              : 'translateX(14px) scale(0.97)',
+            opacity: hudMenuOpen ? 1 : 0,
+            transition: `transform ${PANEL_TRANSITION_MS}ms ${PANEL_EASE}, opacity ${PANEL_TRANSITION_MS * 0.7}ms ${PANEL_EASE}`,
+          }}
         >
           <div className="font-mono text-[8px] font-bold uppercase tracking-[0.22em] text-white/35">
             Menu
@@ -103,21 +145,31 @@ function WorldHudMenuOverlay() {
         </div>
       </div>
 
-      <button
-        type="button"
-        onClick={toggleHudMenu}
-        className="relative z-30 flex w-9 shrink-0 flex-col items-center justify-center gap-1 rounded-l-2xl border border-white/[0.12] border-r-0 py-4 shadow-[-8px_0_24px_rgba(0,0,0,0.35)] transition-colors hover:bg-white/[0.08]"
-        style={panelStyle}
-        aria-label={hudMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
-        aria-expanded={hudMenuOpen}
-      >
-        <span className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/55 [writing-mode:vertical-rl]">
-          Menu
-        </span>
-        <span className="text-[16px] leading-none text-[#f3dfb0]" aria-hidden>
-          {hudMenuOpen ? '›' : '‹'}
-        </span>
-      </button>
+      <div className="flex flex-col items-stretch gap-1">
+        <ChatSideTab />
+        <button
+          type="button"
+          onClick={toggleHudMenu}
+          className={`${SIDE_TAB_CLASS} z-30`}
+          style={panelStyle}
+          aria-label={hudMenuOpen ? 'メニューを閉じる' : 'メニューを開く'}
+          aria-expanded={hudMenuOpen}
+        >
+          <span className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/55 [writing-mode:vertical-rl]">
+            Menu
+          </span>
+          <span
+            className="inline-block text-[16px] leading-none text-[#f3dfb0] transition-transform duration-[420ms]"
+            style={{
+              transform: hudMenuOpen ? 'rotate(0deg)' : 'rotate(180deg)',
+              transitionTimingFunction: PANEL_EASE,
+            }}
+            aria-hidden
+          >
+            ‹
+          </span>
+        </button>
+      </div>
     </div>
   );
 }

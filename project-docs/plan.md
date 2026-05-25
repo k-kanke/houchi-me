@@ -633,10 +633,10 @@ frontend/
 - [ ] HO-112（FE 抽象は実装済み。UI からの本番経路確認が残り）
 - [x] HO-113（`backend/supabase/functions/clone-chat/`）
 - [x] HO-114（`backend/supabase/functions/simulate-clone-day/`）
-- [ ] HO-115（Edge / API Route で `encounter-dialogue`）
-- [ ] HO-116（`apply-daily-answers`）
+- [x] HO-115（`backend/supabase/functions/encounter-dialogue/`）
+- [x] HO-116（`backend/supabase/functions/apply-daily-answers/`）
 - [ ] HO-117（モック UI → Gemini 結果に差替。UI 側の確認と空状態調整）
-- [ ] HO-118（`parse-clone-command`）
+- [x] HO-118（`backend/supabase/functions/parse-clone-command/`）
 
 ### Phase C
 - [x] HO-201（自動巡回 + HUD 連動：`WorldScene.tsx` / `HudCoord.tsx`）

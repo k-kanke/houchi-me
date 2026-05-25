@@ -1,26 +1,34 @@
-# Database Schema
+# Database Schema — 放置me
+
+frontend/src/types/index.ts と 1:1 対応するスキーマ。
+ローカル MVP は frontend の `LocalStorageImpl` で動くため、Supabase は本番接続時のみ必要。
 
 ## Tables
 
 | Table | Description |
 | ----- | ----------- |
-| [users](users.md) | ユーザー情報（ポイント・称号） |
-| [experiences](experiences.md) | 体験会 |
-| [reservations](reservations.md) | ���約（status: reserved / joined / cancelled） |
-| [experience_logs](experience_logs.md) | 参加後ログ |
-| [curiosity_map_items](curiosity_map_items.md) | 好奇心マップ（ユーザー × カテゴリ） |
-| [point_transactions](point_transactions.md) | ポイント履歴 |
+| [profiles](profiles.md) | `auth.users` 1:1 のユーザープロフィール |
+| [clones](clones.md) | ユーザー × クローン (現状 1 ユーザー 1 クローン想定) |
+| [topics](topics.md) | 1日1Topic (`date_key` で日次ユニーク) |
+| [messages](messages.md) | クローンチャットの履歴 |
+| [feedback](feedback.md) | Topic への「気になる/違う/もっと知りたい」 |
 
 ## Relations
 
 ```mermaid
 erDiagram
 
-users ||--o{ experiences : "creator_id"
-users ||--o{ reservations : "user_id"
-users ||--o{ experience_logs : "user_id"
-users ||--o{ curiosity_map_items : "user_id"
-users ||--o{ point_transactions : "user_id"
-experiences ||--o{ reservations : "experience_id"
-experiences ||--o{ experience_logs : "experience_id"
+profiles ||--o{ clones    : "user_id"
+clones   ||--o{ topics    : "clone_id"
+clones   ||--o{ messages  : "clone_id"
+topics   ||--|| feedback  : "topic_id"
 ```
+
+## RLS
+
+すべてのテーブルで RLS を有効化。`auth.uid()` で本人 (= `profiles.id` または `clones.user_id`) のみ読み書き可。
+`topics` / `messages` / `feedback` は紐づく `clones` の所有者だけがアクセスできる。
+
+## 自動トリガ
+
+`auth.users` への INSERT 時に `profiles` を自動作成 (`public.handle_new_user`)。

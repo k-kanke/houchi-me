@@ -407,24 +407,5 @@ s3_secret_key = "env(S3_SECRET_KEY)"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
 
-[functions.reserve-experience]
-enabled = true
-verify_jwt = false
-import_map = "./functions/reserve-experience/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/reserve-experience/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/reserve-experience/*.html" ]
-
-[functions.upload-media]
-enabled = true
-verify_jwt = false
-import_map = "./functions/upload-media/deno.json"
-# Uncomment to specify a custom file path to the entrypoint.
-# Supported file extensions are: .ts, .js, .mjs, .jsx, .tsx
-entrypoint = "./functions/upload-media/index.ts"
-# Specifies static files to be bundled with the function. Supports glob patterns.
-# For example, if you want to serve static HTML pages in your function:
-# static_files = [ "./functions/upload-media/*.html" ]
+# Edge Functions は本番化フェーズで追加予定 (例: clone-chat, simulate-clone-day)
+# 追加時は backend/supabase/functions/<name>/ 配下に index.ts を置き、ここに [functions.<name>] ブロックを追記

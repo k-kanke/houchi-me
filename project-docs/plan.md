@@ -11,10 +11,11 @@
 
 | 項目 | 内容 |
 |------|------|
-| 旧プロダクト | Curio Meet（体験会フィード・予約）— `frontend/` に React + Supabase 実装あり |
+| 旧プロダクト | Curio Meet（体験会フィード・予約）— 旧 `frontend/`（Vite + React）は 2026-05-25 に廃止 |
 | 新プロダクト | 放置me — クローンAI × 3D「叡智の図書館」× 1日1Topic |
 | モック | `index.html`（Three.js r128、単一HTML、Clone OS v2 UI） |
-| 実装方針 | **見た目・3Dはモック移植を最優先**。データ・AI・認証は Supabase を継続利用しスキーマを置き換え |
+| 参照実装 | 旧 `houchi-me/`（Next.js 16 + R3F + Zustand + LocalStorage の MVP）を `frontend/` 本体に昇格し、`houchi-me/` は削除（2026-05-25） |
+| 実装方針 | **houchi-me 系の Next.js 16 + R3F 構成を本線**として継続。データ・AI・認証は Supabase + Claude API（Next.js API Route / Edge Function 経由）で抽象層 1 行差し替えで本番化 |
 
 ### 0.1 モックから移植するもの（チェックリスト）
 
@@ -28,21 +29,23 @@
 - [x] 右パネル: いま / 今日のタイムライン / クローン統計（**データはダミー**）
 - [x] 左サイド: クローンカード・バイタル・ワールド・ページツリー
 
-### 0.3 現在地（Milestone A 完了 — 2026-05-25）
+### 0.3 現在地（Milestone B 完了 — 2026-05-25）
 
-**デプロイ可能なデモ**まで到達済み。`frontend/` を `npm run dev` / Vercel で開ける。
+**houchi-me 系の Next.js 構成へ全面移行**完了。旧 Vite + React の `frontend/` と参照プロトタイプ `houchi-me/` を統合し、`frontend/`（Next.js 16 + R3F）一本に集約。`npm install && npm run dev` で `http://localhost:3000` が動く。`npm run build` も成功（Turbopack 静的書き出し: `/`, `/_not-found`, `/onboarding`）。
 
 | 領域 | 状態 | 主なファイル |
 |------|------|----------------|
-| 3D + UI シェル | 完了 | `WorldScreen.jsx`, `initLibraryScene.js`, `world.css` |
-| クローン操作 | **一部完了**（放置／手動 + WASD） | HO-219, HO-220。クリック移動は未 |
-| クローン作成 | **LocalStorage のみ** | `OnboardingModal.jsx`, `hochiDummy.js` |
-| Topic / チャット / ノート | **オーバーレイ + 固定ダミー** | `WorldScreen.jsx` 内 overlay |
-| Supabase / AI | **未着手** | 旧 Curio スキーマ・画面は残存 |
-| **Gemini / エージェント LLM** | **未着手（設計のみ §3・Phase AI）** | 現状は `hochiDummy.js` 固定文 |
-| デプロイ | `vercel.json` 追加済み | `frontend/vercel.json` |
+| 3D + UI シェル | 完了（R3F 移植済み） | `frontend/src/components/world/WorldScene.tsx`, `Library.tsx`, `Avatar.tsx`, `CameraRig.tsx` |
+| クローン操作 | **観察モードのみ** | 自動巡回。WASD / クリック移動は未（要再導入） |
+| クローン作成 | **LocalStorage（抽象化済み）** | `frontend/src/app/onboarding/page.tsx`, `frontend/src/lib/storage.ts` |
+| Topic / チャット | **モック LLM（抽象化済み）** | `frontend/src/lib/clone-engine.ts`（`LLMMockImpl`） |
+| Supabase / AI | **未接続（手順は確立）** | `frontend/NEXT_STEPS.md`（A: Claude / B: Supabase）、`backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql` |
+| DB スキーマ | **houchi-me 用に置換済み** | `profiles` / `clones` / `topics` / `messages` / `feedback` + RLS + `handle_new_user` トリガ |
+| **Claude API / エージェント LLM** | **未着手（差し替え 1 行で完了）** | `frontend/src/lib/clone-engine.ts` 末尾 `export const engine` を `ClaudeApiImpl` へ |
+| デプロイ | `vercel.json`（framework=nextjs）・Dockerfile/docker-compose 更新済み | `frontend/vercel.json`, `frontend/Dockerfile`, `frontend/docker-compose.yml` |
+| CI / Preview | `cache-dependency-path: frontend/package-lock.json` のまま動作、env を `NEXT_PUBLIC_SUPABASE_*` に更新 | `.github/workflows/ci.yml`, `cd.yml` |
 
-**まだ Must として未達のもの**: DB 永続化、**Gemini API によるクローンエージェント**（Topic・チャット・1日シミュレーション）、毎日の質問、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A のダミー表示は Phase AI で置き換える。**
+**まだ Must として未達のもの**: Supabase 接続（`SupabaseImpl` の本体実装）、**Claude API によるクローンエージェント**（Topic・チャット・1日シミュレーション）、毎日の質問、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A 系で Vite に積んでいた WASD 操作・興味マップ画面・タイムライン画面は再移植が必要。**
 
 ### 0.4 ここから取り組むタスク（推奨順）
 
@@ -221,15 +224,18 @@ flowchart TB
   Chat --> EF
 ```
 
-### 1.1 技術スタック（確定案）
+### 1.1 技術スタック（2026-05-25 確定 — houchi-me 構成）
 
 | 層 | 選定 | 備考 |
 |----|------|------|
-| フロント | React 18 + Vite + Tailwind（既存） | 3D は `@react-three/fiber` + `three@0.128` **または** `index.html` の Three モジュールを `frontend/src/world/` に分割移植 |
-| 3D | Three.js r128（モックと同版） | Bloom は optional（モック同様フォールバック） |
-| バック | Supabase（Auth / DB / Realtime / Edge Functions） | 旧 Curio テーブルは非推奨・新マイグレーションで置換 |
-| AI | **Google Gemini API**（例: `gemini-2.0-flash` / `gemini-1.5-flash`）— Edge Functions から呼び出し | 審査用に `AI_USAGE_LOG.md` へ記録必須。キーは `GEMINI_API_KEY` |
-| インフラ | Vercel（FE）+ Supabase Cloud | 既存 Docker/nginx は維持可 |
+| フロント | **Next.js 16 (App Router) + React 19 + TypeScript** | `frontend/`。Turbopack ビルド。`src/app/` ルーティング |
+| 3D | **Three.js + @react-three/fiber + @react-three/drei + @react-three/postprocessing** | 旧 Vite の vanilla Three 実装は撤去、R3F に統一 |
+| 状態管理 / UI | **Zustand**、Tailwind CSS v4（`@theme inline` でカラー/フォントトークン） | `frontend/src/lib/store.ts`、`src/app/globals.css` |
+| 永続化 | `Storage` インターフェース（`LocalStorageImpl` 既定 / `SupabaseImpl` 差し替え） | `frontend/src/lib/storage.ts` — 末尾 1 行で切替 |
+| LLM | `CloneEngine` インターフェース（`LLMMockImpl` 既定 / `ClaudeApiImpl` 差し替え） | `frontend/src/lib/clone-engine.ts` — 末尾 1 行で切替 |
+| バック | Supabase（Auth / DB / Realtime / Edge Functions） | 旧 Curio スキーマは削除、`profiles/clones/topics/messages/feedback` に置換済み |
+| AI | **Anthropic Claude API**（`claude-opus-4-7` 等）— Next.js API Route 経由でキーを秘匿 | 手順は [`frontend/NEXT_STEPS.md`](../frontend/NEXT_STEPS.md) §A。Edge Function 経由も可。`ANTHROPIC_API_KEY` を Vercel/Supabase Secret |
+| インフラ | Vercel（root=`frontend`、Next.js auto-detect）+ Supabase Cloud + 任意 Docker | `frontend/Dockerfile`（multi-stage: dev / build / production の next start） |
 
 ### 1.2 画面ルーティング（MVP）
 
@@ -248,9 +254,21 @@ flowchart TB
 
 ## 2. データモデル（Supabase）
 
-旧スキーマ（`experiences`, `reservations` 等）は **参照のみ**。新規マイグレーション `backend/supabase/migrations/YYYYMMDD_hochi_me_schema.sql` で追加。
+旧スキーマ（`experiences`, `reservations`, `curiosity_map_items` 等）は **2026-05-25 にマイグレーションごと削除**。`backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql` で新スキーマを置いた。
 
-### 2.1 コアテーブル
+### 2.0 実装済み（MVP コア）
+
+| テーブル | 用途 | 主要カラム |
+|----------|------|------------|
+| `profiles` | `auth.users` 1:1 のユーザープロフィール | `id` (FK auth.users), `email`, `display_name` |
+| `clones` | 1ユーザー1クローン | `user_id`, `name`, `mbti`, `likes[]`, `dislikes[]`, `self_description`, `ideal_self`, `personality_shift`, `exploration_type`, `sync_rate` |
+| `topics` | 1日1Topic | `clone_id`, `date_key` (`(clone_id, date_key)` ユニーク), `title`, `reasoning`, `exploration_path[]`, `related_concepts[]` |
+| `messages` | クローンチャット | `clone_id`, `role` (`user`/`clone`), `text` |
+| `feedback` | Topic フィードバック | `topic_id` (PK), `kind` (`interested`/`different`/`more`) |
+
+RLS は全テーブルで有効、`auth.uid()` 本人のみ。`auth.users` INSERT で `public.handle_new_user` トリガが `profiles` を自動作成。
+
+### 2.1 将来拡張テーブル（未実装・要 HO-101 拡張）
 
 | テーブル | 用途 | 主要カラム |
 |----------|------|------------|
@@ -285,12 +303,14 @@ flowchart TB
 
 ## 3. AI / バックエンドジョブ（Gemini・エージェント）
 
-### 3.1 方針
+### 3.1 方針（2026-05-25 改訂 — houchi-me 参照実装に整合）
 
-- **プロバイダ**: Google **Gemini API**（チーム方針。実装タスクは Phase AI `HO-110`〜）
-- **実行場所**: Supabase **Edge Functions**（Deno）。フロントは `supabase.functions.invoke` のみ
+- **プロバイダ**: **Anthropic Claude API**（`claude-opus-4-7` 等）。チームの当初方針 (Gemini) から houchi-me 参照実装に合わせて変更。
+- **実行場所**: **Next.js API Route**（`frontend/src/app/api/*`）を本線。Supabase **Edge Functions**（Deno）からの呼び出しも併用可（特に重いバッチ系は Edge）。
+- **抽象境界**: フロントは `frontend/src/lib/clone-engine.ts` の `CloneEngine` インターフェース経由でのみ LLM を叩く。`LLMMockImpl`（既定）→ `ClaudeApiImpl`（本番）の差し替えは末尾 1 行。
 - **エージェント像**: 単発 completion ではなく、**クローン人格（system）+ 記憶コンテキスト（user/data）+ タスク別指示** で「放置中に探索しているクローン」として振る舞う
-- **ダミー**: [`hochiDummy.js`](../frontend/src/data/hochiDummy.js) は **API 失敗時・オフライン開発用フォールバック** に降格（`HO-112`）
+- **モック**: `frontend/src/lib/clone-engine.ts` 内の `MOCK_TOPIC_SEEDS` / `LLMMockImpl` がそのままフォールバック。`hochiDummy.js` は廃止。
+- **手順**: [`frontend/NEXT_STEPS.md`](../frontend/NEXT_STEPS.md) §A に Claude 接続、§B に Supabase 接続の具体手順あり。
 
 ```mermaid
 flowchart LR
@@ -485,36 +505,42 @@ flowchart LR
 
 ---
 
-## 6. フロントコンポーネント構成（目標ツリー）
+## 6. フロントコンポーネント構成（2026-05-25 現状 — houchi-me 構成）
 
 ```
-frontend/src/
-├── App.jsx                 # ルート・認証・クローン有無判定
-├── styles/
-│   ├── tokens.js           # HO-002: モック CSS 変数
-│   └── world.css           # glass / grid / timeline 等
-├── screens/
-│   ├── OnboardingScreen.jsx
-│   ├── WorldScreen.jsx     # HO-003–207: ホーム（3D+オーバーレイ）
-│   ├── TopicScreen.jsx
-│   ├── ChatScreen.jsx
-│   ├── InterestMapScreen.jsx
-│   ├── NotesScreen.jsx
-│   └── TimelineScreen.jsx
-├── components/world/
-│   ├── WorldLayout.jsx     # topbar / sidebar / right / command
-│   ├── CloneCard.jsx
-│   ├── VitalsBar.jsx
-│   ├── NowCard.jsx
-│   ├── ActivityTimeline.jsx
-│   ├── CommandBar.jsx
-│   └── CameraControls.jsx
-└── world/                  # Three.js（index.html から移植）
-    ├── LibraryScene.jsx
-    ├── buildAvatar.js
-    ├── waypoints.js
-    └── minimap.js
+frontend/
+├── next.config.ts / tsconfig.json / eslint.config.mjs / postcss.config.mjs
+├── Dockerfile / docker-compose.yml / vercel.json / .env.example
+├── public/                       # static SVGs
+└── src/
+    ├── app/
+    │   ├── layout.tsx            # ルートレイアウト（fonts / metadata）
+    │   ├── globals.css           # Tailwind v4 + neon カラー + アニメーション
+    │   ├── page.tsx              # トップ。Loader → AppShell（未作成時 /onboarding へ）
+    │   └── onboarding/page.tsx   # 6ステップのクローン作成
+    ├── components/
+    │   ├── Loader.tsx            # CLONE OS ブートシーケンス
+    │   ├── layout/               # AppShell / TopBar / Sidebar / RightPanel / CommandBar
+    │   ├── sidebar/              # CloneStatusCard / Vitals / NavTree / MiniMap
+    │   ├── panel/                # NowCard / Timeline / Stats
+    │   ├── main/                 # Breadcrumb / ViewTabs / HudCoord / CameraButtons / ActivityBadge / WorldStats
+    │   ├── topic/TodayTopicView.tsx
+    │   ├── chat/ChatView.tsx
+    │   └── world/                # VirtualWorld / WorldScene / Library / Avatar / Particles / CameraRig / palettes
+    ├── lib/
+    │   ├── storage.ts            # Storage インタフェース + LocalStorageImpl（末尾 1 行で SupabaseImpl に差替）
+    │   ├── clone-engine.ts       # CloneEngine インタフェース + LLMMockImpl（末尾 1 行で ClaudeApiImpl に差替）
+    │   ├── store.ts              # Zustand のグローバル状態
+    │   └── util.ts
+    └── types/index.ts            # Clone / Topic / Message / Feedback / CameraMode / WorldAvatarState
 ```
+
+**未移植（旧 Vite に存在し、Next.js 側にまだ無いもの）**
+
+- 興味マップ画面 (`InterestMapScreen.jsx` 相当) → HO-304 で `src/app/map/page.tsx` を新設
+- ノート画面 (`NotesScreen.jsx` 相当) → HO-305 で `src/app/notes/page.tsx` を新設
+- タイムライン画面 (`TimelineScreen.jsx` 相当) → HO-501 で `src/app/timeline/page.tsx` を新設
+- WASD 操作・クリック移動 → HO-219〜222 を R3F の `useFrame` ベースで再実装
 
 ---
 
@@ -574,47 +600,47 @@ frontend/src/
 
 > **次に着手するタスクの一覧は §0.4 を参照。**
 
-### Phase A — Milestone A（デモ実装）
-- [x] HO-001（README・プロダクト名の一部）
-- [x] HO-002
-- [ ] HO-003（`WorldScreen` 単体のまま — コンポーネント分割は未）
-- [ ] HO-004（`initLibraryScene.js` 単一ファイル — 分割は未）
-- [x] HO-005（Bloom オフ・フォールバックで運用）
-- [x] HO-006（`three@0.128.0` のみ。R3F は未導入）
+### Phase A — Milestone A→B（houchi-me Next.js へ統合済み）
+- [x] HO-001（README・プロダクト名）
+- [x] HO-002（Tailwind v4 `@theme inline` + neon カラー、`src/app/globals.css`）
+- [x] HO-003（`components/layout/*` で TopBar / Sidebar / RightPanel / CommandBar 分割済み）
+- [x] HO-004（R3F: `components/world/WorldScene.tsx`, `Library.tsx`, `Avatar.tsx`, `CameraRig.tsx`, `Particles.tsx`）
+- [x] HO-005（R3F 化に伴い Bloom は `@react-three/postprocessing` で任意）
+- [x] HO-006（`@react-three/fiber` `@react-three/drei` `@react-three/postprocessing` 導入済み、`three@^0.184`）
 
-### Phase B — **← データ基盤・ここから優先**
-- [ ] HO-101
-- [ ] HO-102
-- [x] HO-103（簡易版 `OnboardingModal` — 設計書フル項目は未）
-- [ ] HO-104
-- [x] HO-105（LocalStorage 版）
+### Phase B — データ基盤（スキーマ完了 / 接続は次）
+- [x] HO-101（スキーマ + RLS：`backend/supabase/migrations/20260525160000_create_houchi_me_schema.sql`）
+- [x] HO-102（最小シード：`backend/supabase/seed.sql` の Mira / Topic / Messages）
+- [x] HO-103（6 ステップオンボーディング：`src/app/onboarding/page.tsx`）
+- [ ] HO-104（`SupabaseImpl` 実装は未 — `frontend/src/lib/storage.ts` 末尾 1 行差し替え + メソッド本体）
+- [x] HO-105（未作成時に `/onboarding` 遷移：`src/app/page.tsx`）
 
-### Phase AI — **← ダミー→Gemini（DB と並行可）**
-- [ ] HO-110
-- [ ] HO-111
-- [ ] HO-112
-- [ ] HO-113
-- [ ] HO-114
-- [ ] HO-115
-- [ ] HO-116
-- [ ] HO-117
-- [ ] HO-118
+### Phase AI — **← Claude API へ差替（プロバイダ Gemini → Claude に変更）**
+- [ ] HO-110（共通 Claude クライアント。手順: `frontend/NEXT_STEPS.md` §A-3, A-4）
+- [ ] HO-111（人格 system プロンプト + コンテキスト組み立て: `src/lib/claude/prompts/`）
+- [ ] HO-112（FE 抽象は既に houchi-me 由来で完了。残るは `ClaudeApiImpl` 実装）
+- [ ] HO-113（`src/app/api/chat/route.ts`：Claude SSE ストリーミング — 雛形 §A-4 にあり）
+- [ ] HO-114（`src/app/api/topics/generate/route.ts` または Edge Function — 雛形 §A-4 にあり）
+- [ ] HO-115（Edge / API Route で `encounter-dialogue`）
+- [ ] HO-116（`apply-daily-answers`）
+- [ ] HO-117（モック UI → Claude 結果に差替。`engine` を `ClaudeApiImpl()` に書き換えるだけで主要画面は移行）
+- [ ] HO-118（`parse-clone-command`）
 
 ### Phase C
-- [x] HO-201
-- [x] HO-202
-- [x] HO-203
-- [x] HO-204（表示のみ・DB 未連携）
-- [ ] HO-205（ダミー / 3D コールバックのみ）
-- [ ] HO-206（初期ダミー固定）
-- [x] HO-207（UI のみ・送信未接続）
-- [x] HO-208
+- [x] HO-201（自動巡回 + HUD 連動：`WorldScene.tsx` / `HudCoord.tsx`）
+- [x] HO-202（4カメラ：`CameraButtons.tsx` / `CameraRig.tsx`）
+- [x] HO-203（ミニマップ：`sidebar/MiniMap.tsx`）
+- [x] HO-204（クローンカード・バイタル：`sidebar/CloneStatusCard.tsx` / `Vitals.tsx`、DB 未連携）
+- [ ] HO-205（NowCard モック表示中：`panel/NowCard.tsx`。DB 化は HO-114 後）
+- [ ] HO-206（Timeline モック表示中：`panel/Timeline.tsx`。DB 化は HO-114 後）
+- [x] HO-207（CommandBar UI：`layout/CommandBar.tsx`。送信先 LLM は HO-403/118）
+- [x] HO-208（吹き出し会話：固定 → LLM 差替は HO-115）
 
-### Phase C2 — クローン操作感
-- [x] HO-219（放置／手動トグル・自動巡回停止）
-- [x] HO-220（WASD・矢印・歩行アニメ・HUD 速度）
-- [ ] HO-221
-- [ ] HO-222
+### Phase C2 — クローン操作感（**Next.js 移行で未移植 — 要再実装**）
+- [ ] HO-219（旧 Vite 版にあった放置／手動トグル。R3F 版は未着手）
+- [ ] HO-220（WASD/矢印 — R3F の `useFrame` + `KeyboardControls` で再実装）
+- [ ] HO-221（クリック移動 Raycaster — drei の `useThree` で実装）
+- [ ] HO-222（最寄りロケーション HUD）
 - [ ] HO-223
 - [ ] HO-224
 
@@ -644,10 +670,10 @@ frontend/src/
 - [ ] HO-506
 
 ### Phase G — デプロイ・インフラ
-- [ ] HO-601（`vercel.json`・ローカル build のみ完了 — Production URL 未）
-- [ ] HO-606
-- [ ] HO-607
-- [ ] HO-608
+- [ ] HO-601（`vercel.json` を Next.js 用に置換・ローカル `npm run build` 成功 — Production URL 未）
+- [ ] HO-606（Vercel root=`frontend`・Framework=Next.js（自動検出）に切替必要）
+- [ ] HO-607（`NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `ANTHROPIC_API_KEY` を Vercel Env へ）
+- [ ] HO-608（`ANTHROPIC_API_KEY`・`SUPABASE_SERVICE_ROLE_KEY` を Supabase Secret / Vercel Env へ）
 - [ ] HO-609
 - [ ] HO-610
 - [ ] HO-602
@@ -677,6 +703,10 @@ frontend/src/
 | [AI_USAGE_LOG.md](./AI_USAGE_LOG.md) | 審査用 AI 記録 |
 | [../index.html](../index.html) | UI/3D モック（正） |
 | [../README.md](../README.md) | セットアップ・提出 |
+| [../frontend/README.md](../frontend/README.md) | Next.js アプリの起動・抽象化設計 |
+| [../frontend/NEXT_STEPS.md](../frontend/NEXT_STEPS.md) | Claude API / Supabase / Vercel 接続の手順書 |
+| [../backend/docs/db.md](../backend/docs/db.md) | DB 運用・テーブル一覧 |
+| [../backend/supabase/schema/README.md](../backend/supabase/schema/README.md) | スキーマ ER 図 |
 
 ---
 
@@ -689,3 +719,4 @@ frontend/src/
 | 2026-05-25 | Gemini API・クローンエージェント（Phase AI `HO-110`〜`HO-118`）、§3 拡充、ダミー置き換えマップを追加 |
 | 2026-05-25 | クローン手動操作（Phase C2 `HO-219`〜`HO-224`）、§0.4 スプリント 2.5 を追加 |
 | 2026-05-25 | デプロイ（Phase G 拡充 `HO-606`〜`HO-610`）、デザイン/UI（Phase H `HO-701`〜`HO-710`）、README 担当割り振り |
+| 2026-05-25 | **Milestone B**：`houchi-me/` (Next.js 16 + R3F + Zustand + TS) を `frontend/` に昇格し旧 Vite フロントと統合、`houchi-me/` 削除。backend Supabase を houchi-me スキーマ (`profiles/clones/topics/messages/feedback`) に全面置換。AI プロバイダを Gemini → **Claude API** に変更（接続抽象は `frontend/src/lib/clone-engine.ts`）。Dockerfile/docker-compose/vercel.json/CI env を Next.js 用に更新、root の `node_modules` 削除し `frontend/` で再 install。§0.3 / §1.1 / §2 / §3 / §6 / §10 / §11 を全面改訂 |

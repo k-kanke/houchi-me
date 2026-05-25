@@ -259,7 +259,7 @@ export class SupabaseImpl implements Storage {
       .from('clones')
       .select('id')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     return data?.id ?? null;
   }
 
@@ -270,7 +270,7 @@ export class SupabaseImpl implements Storage {
       .from('clones')
       .select('*')
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
     return data ? rowToClone(data as Record<string, unknown>) : null;
   }
 
@@ -319,7 +319,7 @@ export class SupabaseImpl implements Storage {
       .select('*')
       .eq('clone_id', cloneId)
       .eq('date_key', dateKey)
-      .single();
+      .maybeSingle();
     return data ? rowToTopic(data as Record<string, unknown>) : null;
   }
 

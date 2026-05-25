@@ -245,6 +245,11 @@ function rowToClone(r: Record<string, unknown>): Clone {
     personalityShift: r.personality_shift as Clone['personalityShift'],
     explorationType: r.exploration_type as Clone['explorationType'],
     syncRate: r.sync_rate as number,
+    vitals: (r.vitals as Clone['vitals']) ?? {
+      focus: 62,
+      energy: 58,
+      curiosity: 71,
+    },
     createdAt: r.created_at as string,
   };
 }
@@ -345,6 +350,7 @@ export class SupabaseImpl implements Storage {
       personality_shift: clone.personalityShift,
       exploration_type: clone.explorationType,
       sync_rate: clone.syncRate,
+      vitals: clone.vitals ?? { focus: 62, energy: 58, curiosity: 71 },
     });
     if (error) throw error;
   }
@@ -525,6 +531,7 @@ export class SupabaseImpl implements Storage {
     if (partial.personalityShift !== undefined) updates.personality_shift = partial.personalityShift;
     if (partial.explorationType !== undefined) updates.exploration_type = partial.explorationType;
     if (partial.syncRate !== undefined) updates.sync_rate = partial.syncRate;
+    if (partial.vitals !== undefined) updates.vitals = partial.vitals;
     const { error } = await getSupabase().from('clones').update(updates).eq('user_id', user.id);
     if (error) throw error;
     return this.getClone();

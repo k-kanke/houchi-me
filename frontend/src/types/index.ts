@@ -11,6 +11,12 @@ export type ExplorationType = 'depth' | 'breadth' | 'social' | 'reverse';
 
 export type FeedbackKind = 'interested' | 'different' | 'more';
 
+export interface CloneVitals {
+  focus: number;
+  energy: number;
+  curiosity: number;
+}
+
 export interface Clone {
   id: string;
   name: string;
@@ -22,6 +28,7 @@ export interface Clone {
   personalityShift: PersonalityShift;
   explorationType: ExplorationType;
   syncRate: number;
+  vitals?: CloneVitals;
   createdAt: string;
 }
 
@@ -71,6 +78,19 @@ export interface Feedback {
   topicId: string;
   kind: FeedbackKind;
   createdAt: string;
+}
+
+export interface DailyAnswerInput {
+  questionKey: string;
+  answer: string;
+}
+
+export interface DailyAnswersResult {
+  syncRate: number;
+  vitals: CloneVitals;
+  explorationType: ExplorationType;
+  personalityShift: PersonalityShift;
+  summary: string;
 }
 
 export type ViewTab = 'note' | 'world' | 'chat';

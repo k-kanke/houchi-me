@@ -4,10 +4,14 @@ import { useMemo } from 'react';
 import { useAppStore } from '@/lib/store';
 
 export default function Vitals() {
+  const clone = useAppStore((s) => s.clone);
   const feedback = useAppStore((s) => s.feedback);
   const topics = useAppStore((s) => s.topics);
 
   const vitals = useMemo(() => {
+    if (clone?.vitals) {
+      return clone.vitals;
+    }
     const fb = Object.values(feedback);
     const interested = fb.filter((f) => f.kind === 'interested').length;
     const more = fb.filter((f) => f.kind === 'more').length;
@@ -17,7 +21,7 @@ export default function Vitals() {
     const energy = Math.min(95, 50 + topics.length * 4 + interested * 3);
     const curiosity = Math.min(99, 65 + more * 4 + different * 5);
     return { focus, energy, curiosity };
-  }, [feedback, topics.length]);
+  }, [clone?.vitals, feedback, topics.length]);
 
   return (
     <div className="glass rounded-2xl p-4">

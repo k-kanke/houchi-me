@@ -1,11 +1,15 @@
 import { getSupabase } from '@/lib/supabase';
 import { storage } from '@/lib/storage';
 import { nowIso, uuid } from '@/lib/util';
-import type { Clone, Message, Topic } from '@/types';
+import type { Clone, DailyAnswerInput, DailyAnswersResult, Message, Topic } from '@/types';
 
 export interface CloneEngine {
   readonly persistsMessages?: boolean;
   generateTodaysTopic(clone: Clone, history: Topic[]): Promise<Topic>;
+  applyDailyAnswers(
+    clone: Clone,
+    answers: DailyAnswerInput[],
+  ): Promise<DailyAnswersResult>;
   chatStream(
     clone: Clone,
     history: Message[],
@@ -157,7 +161,7 @@ const isSupabaseConfigured =
   !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
   !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-type CloneApiFunctionName = 'simulate-clone-day' | 'clone-chat';
+type CloneApiFunctionName = 'simulate-clone-day' | 'clone-chat' | 'apply-daily-answers';
 
 type CloneApiValidator<T> = (value: unknown) => value is T;
 
@@ -249,6 +253,22 @@ function isChatShape(value: unknown): value is ChatApiPayload {
   return typeof payload.reply === 'string' && payload.reply.trim().length > 0;
 }
 
+function isDailyAnswersShape(value: unknown): value is DailyAnswersResult {
+  if (!value || typeof value !== 'object') return false;
+  const payload = value as Record<string, unknown>;
+  const vitals = payload.vitals as Record<string, unknown> | undefined;
+  return (
+    typeof payload.syncRate === 'number' &&
+    !!vitals &&
+    typeof vitals.focus === 'number' &&
+    typeof vitals.energy === 'number' &&
+    typeof vitals.curiosity === 'number' &&
+    typeof payload.explorationType === 'string' &&
+    typeof payload.personalityShift === 'string' &&
+    typeof payload.summary === 'string'
+  );
+}
+
 export class LLMMockImpl implements CloneEngine {
   async generateTodaysTopic(clone: Clone, history: Topic[]): Promise<Topic> {
     await delay(500);
@@ -261,6 +281,31 @@ export class LLMMockImpl implements CloneEngine {
       explorationPath: seed.explorationPath,
       relatedConcepts: seed.relatedConcepts,
       createdAt: new Date().toISOString(),
+    };
+  }
+
+  async applyDailyAnswers(
+    clone: Clone,
+    answers: DailyAnswerInput[],
+  ): Promise<DailyAnswersResult> {
+    await delay(500);
+    const text = answers.map((answer) => answer.answer).join(' ');
+    const curiosityBoost = /気になる|知りたい|新しい|初めて|見たい/.test(text) ? 4 : 1;
+    const socialBoost = /人|話|友達|会う|一緒/.test(text) ? 3 : 0;
+    const focusBoost = /集中|深掘り|一人|ひとり|没頭/.test(text) ? 4 : 1;
+    const currentVitals = clone.vitals ?? { focus: 62, energy: 58, curiosity: 71 };
+
+    return {
+      syncRate: Math.min(100, clone.syncRate + 0.6),
+      vitals: {
+        focus: Math.min(100, currentVitals.focus + focusBoost),
+        energy: Math.min(100, currentVitals.energy + 2),
+        curiosity: Math.min(100, currentVitals.curiosity + curiosityBoost),
+      },
+      explorationType: socialBoost > 0 ? 'social' : clone.explorationType,
+      personalityShift: clone.personalityShift,
+      summary:
+        '今日の回答から、探索の向きが少し具体化しました。次のTopicでは、気になった言葉と行動しやすさの接点を優先して見に行きます。',
     };
   }
 
@@ -333,6 +378,20 @@ export class SupabaseEdgeFunctionImpl implements CloneEngine {
       await delay(18);
     }
   }
+
+  async applyDailyAnswers(
+    clone: Clone,
+    answers: DailyAnswerInput[],
+  ): Promise<DailyAnswersResult> {
+    return invokeCloneApi(
+      'apply-daily-answers',
+      {
+        cloneId: clone.id,
+        answers,
+      },
+      isDailyAnswersShape,
+    );
+  }
 }
 
 class FallbackCloneEngine implements CloneEngine {
@@ -349,6 +408,18 @@ class FallbackCloneEngine implements CloneEngine {
     } catch (error) {
       console.warn('Falling back to dummy topic generation:', error);
       return this.fallback.generateTodaysTopic(clone, history);
+    }
+  }
+
+  async applyDailyAnswers(
+    clone: Clone,
+    answers: DailyAnswerInput[],
+  ): Promise<DailyAnswersResult> {
+    try {
+      return await this.primary.applyDailyAnswers(clone, answers);
+    } catch (error) {
+      console.warn('Falling back to dummy daily answer application:', error);
+      return this.fallback.applyDailyAnswers(clone, answers);
     }
   }
 

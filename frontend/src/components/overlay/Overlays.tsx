@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useAppStore } from '@/lib/store';
 import { storage } from '@/lib/storage';
-import type { EncounterLog, HumanFriend } from '@/types';
+import { engine } from '@/lib/clone-engine';
+import type { DailyAnswerInput, EncounterLog, HumanFriend } from '@/types';
 
 interface HobbyEntry {
   name: string;
@@ -317,6 +318,174 @@ function EncounterLogsOverlay({ onClose }: { onClose: () => void }) {
           ))}
         </div>
       )}
+    </OverlayShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Daily questions
+// ─────────────────────────────────────────────────────────────
+
+const DAILY_QUESTIONS: Array<{
+  key: string;
+  text: string;
+  placeholder: string;
+}> = [
+  {
+    key: 'energy-source',
+    text: '最近、自然と時間を使ってしまったものは何？',
+    placeholder: '例: 気づいたら動画編集の作例を見ていた',
+  },
+  {
+    key: 'social-comfort',
+    text: '今は人と話したい気分？それとも一人で深掘りしたい？',
+    placeholder: '例: 今日は一人で考えたいけど、少人数なら話したい',
+  },
+  {
+    key: 'new-curiosity',
+    text: '最近少しでも気になったけど、まだ触れていないものは？',
+    placeholder: '例: フィールド録音、建築写真、短歌',
+  },
+  {
+    key: 'avoid-today',
+    text: '今日は避けたいもの、気が進まないものは？',
+    placeholder: '例: 人が多い場所、急ぎの予定、長い文章',
+  },
+  {
+    key: 'future-self',
+    text: '明日の自分に少しだけ近づくなら、何を試したい？',
+    placeholder: '例: 朝に10分だけメモを書く',
+  },
+];
+
+function DailyQuestionsOverlay({ onClose }: { onClose: () => void }) {
+  const clone = useAppStore((s) => s.clone);
+  const setClone = useAppStore((s) => s.setClone);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [summary, setSummary] = useState<string | null>(null);
+
+  if (!clone) return null;
+
+  const answeredCount = DAILY_QUESTIONS.filter((question) =>
+    answers[question.key]?.trim(),
+  ).length;
+  const canSubmit = answeredCount >= 3 && !submitting;
+
+  const submit = async () => {
+    if (!canSubmit) return;
+    const payload: DailyAnswerInput[] = DAILY_QUESTIONS.map((question) => ({
+      questionKey: question.key,
+      answer: answers[question.key]?.trim() ?? '',
+    })).filter((answer) => answer.answer);
+
+    setSubmitting(true);
+    setError(null);
+    setSummary(null);
+
+    try {
+      const result = await engine.applyDailyAnswers(clone, payload);
+      const nextClone = {
+        ...clone,
+        syncRate: result.syncRate,
+        vitals: result.vitals,
+        explorationType: result.explorationType,
+        personalityShift: result.personalityShift,
+      };
+      setClone(nextClone);
+      setSummary(result.summary);
+      try {
+        await storage.updateClone({
+          syncRate: result.syncRate,
+          vitals: result.vitals,
+          explorationType: result.explorationType,
+          personalityShift: result.personalityShift,
+        });
+      } catch (persistError) {
+        console.warn('Failed to persist daily answer result locally:', persistError);
+      }
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : '送信に失敗しました');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <OverlayShell
+      title="毎日の質問"
+      subtitle={`${clone.name} の同期データ`}
+      onClose={onClose}
+    >
+      <div className="space-y-3">
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-white/40">
+              Sync
+            </div>
+            <div className="mt-1 text-[13px] text-[var(--color-neon-cyan)]">
+              {clone.syncRate.toFixed(1)}%
+            </div>
+          </div>
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-3 py-2">
+            <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-white/40">
+              Answered
+            </div>
+            <div className="mt-1 text-[13px] text-white/85">
+              {answeredCount}/{DAILY_QUESTIONS.length}
+            </div>
+          </div>
+        </div>
+
+        {DAILY_QUESTIONS.map((question, index) => (
+          <label
+            key={question.key}
+            className="block rounded-2xl border border-white/[0.06] bg-white/[0.02] p-3"
+          >
+            <div className="mb-2 flex items-start gap-2">
+              <span className="font-mono text-[10px] text-[var(--color-neon-cyan)]">
+                {String(index + 1).padStart(2, '0')}
+              </span>
+              <span className="text-[12.5px] leading-relaxed text-white/85">
+                {question.text}
+              </span>
+            </div>
+            <textarea
+              value={answers[question.key] ?? ''}
+              onChange={(event) =>
+                setAnswers((current) => ({
+                  ...current,
+                  [question.key]: event.target.value,
+                }))
+              }
+              rows={2}
+              placeholder={question.placeholder}
+              className="w-full resize-none rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[12.5px] leading-relaxed text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-[var(--color-neon-cyan)]/30"
+            />
+          </label>
+        ))}
+
+        {error && (
+          <div className="rounded-xl border border-[var(--color-neon-pink)]/40 bg-[var(--color-neon-pink)]/10 px-3 py-2 text-[12px] text-[var(--color-neon-pink)]">
+            {error}
+          </div>
+        )}
+
+        {summary && (
+          <div className="rounded-2xl border border-[var(--color-neon-green)]/30 bg-[var(--color-neon-green)]/10 p-3 text-[12.5px] leading-relaxed text-white/85">
+            {summary}
+          </div>
+        )}
+
+        <button
+          onClick={submit}
+          disabled={!canSubmit}
+          className="w-full rounded-2xl bg-gradient-to-r from-[var(--color-neon-violet)] to-[var(--color-neon-cyan)] px-4 py-3 text-[13px] font-medium text-[#06060c] transition-opacity hover:opacity-90 disabled:opacity-40"
+        >
+          {submitting ? '同期中…' : '回答を送信'}
+        </button>
+      </div>
     </OverlayShell>
   );
 }
@@ -742,7 +911,8 @@ function ProfileOverlay({ onClose }: { onClose: () => void }) {
 
   // 編集モードに入るたびに現在値で初期化
   useEffect(() => {
-    if (editing && clone) {
+    if (!editing || !clone) return;
+    const timer = window.setTimeout(() => {
       setName(clone.name);
       setMbti(clone.mbti);
       setLikes([...clone.likes]);
@@ -750,7 +920,8 @@ function ProfileOverlay({ onClose }: { onClose: () => void }) {
       setSelfDescription(clone.selfDescription);
       setIdealSelf(clone.idealSelf);
       setError(null);
-    }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [editing, clone]);
 
   if (!clone) return null;
@@ -914,6 +1085,7 @@ export default function Overlays() {
   if (!openOverlay) return null;
   if (openOverlay === 'hobbies') return <HobbiesOverlay onClose={close} />;
   if (openOverlay === 'encounters') return <EncounterLogsOverlay onClose={close} />;
+  if (openOverlay === 'daily') return <DailyQuestionsOverlay onClose={close} />;
   if (openOverlay === 'friends') return <FriendsOverlay onClose={close} />;
   if (openOverlay === 'profile') return <ProfileOverlay onClose={close} />;
   return null;

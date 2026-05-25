@@ -38,21 +38,19 @@ function SegmentButton({
   );
 }
 
-export default function CameraModeToggle() {
+const panelGlass = {
+  background: 'rgba(12, 10, 26, 0.72)',
+  backdropFilter: 'blur(20px) saturate(170%)',
+  WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+} as const;
+
+export default function CameraModeToggle({ embedded = false }: { embedded?: boolean }) {
   const cameraMode = useAppStore((s) => s.cameraMode);
   const setCameraMode = useAppStore((s) => s.setCameraMode);
   const controlMode = useAppStore((s) => s.controlMode);
   const setControlMode = useAppStore((s) => s.setControlMode);
 
-  return (
-    <section
-      className="pointer-events-auto w-[128px] rounded-[16px] border border-white/[0.08] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.34)]"
-      style={{
-        background: 'rgba(12, 10, 26, 0.72)',
-        backdropFilter: 'blur(20px) saturate(170%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
-      }}
-    >
+  const inner = (
       <div className="space-y-1">
         <div>
           <div className="mb-1 px-1 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
@@ -100,6 +98,18 @@ export default function CameraModeToggle() {
           </div>
         </div>
       </div>
+  );
+
+  if (embedded) {
+    return <div className="w-full">{inner}</div>;
+  }
+
+  return (
+    <section
+      className="pointer-events-auto w-[128px] rounded-[16px] border border-white/[0.08] p-1.5 shadow-[0_12px_32px_rgba(0,0,0,0.34)]"
+      style={panelGlass}
+    >
+      {inner}
     </section>
   );
 }

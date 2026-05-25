@@ -5,7 +5,7 @@ import { useAppStore } from '@/lib/store';
 
 const STICK_RADIUS = 42;
 
-export default function ControlPad() {
+export default function ControlPad({ embedded = false }: { embedded?: boolean }) {
   const controlMode = useAppStore((s) => s.controlMode);
   const setManualInput = useAppStore((s) => s.setManualInput);
   const [stick, setStick] = useState({ x: 0, z: 0 });
@@ -91,16 +91,7 @@ export default function ControlPad() {
 
   const knobX = stick.x * STICK_RADIUS;
   const knobY = stick.z * STICK_RADIUS;
-  return (
-    <div
-      className="pointer-events-auto select-none rounded-[28px] border border-white/[0.08] p-4 shadow-[0_10px_34px_rgba(0,0,0,0.45)]"
-      style={{
-        background: 'rgba(12, 10, 26, 0.72)',
-        backdropFilter: 'blur(20px) saturate(170%)',
-        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
-      }}
-    >
-      <div className="flex justify-center">
+  const stickArea = (
         <div
           ref={padRef}
           onPointerDown={(e) => {
@@ -128,7 +119,30 @@ export default function ControlPad() {
             />
           </div>
         </div>
+  );
+
+  if (embedded) {
+    return (
+      <div className="pointer-events-auto w-full select-none">
+        <div className="mb-1.5 font-mono text-[7px] font-bold uppercase tracking-[0.18em] text-white/28">
+          Move
+        </div>
+        <div className="flex justify-center">{stickArea}</div>
+        <p className="mt-2 text-center text-[10px] text-white/40">WASD またはスティック</p>
       </div>
+    );
+  }
+
+  return (
+    <div
+      className="pointer-events-auto select-none rounded-[28px] border border-white/[0.08] p-4 shadow-[0_10px_34px_rgba(0,0,0,0.45)]"
+      style={{
+        background: 'rgba(12, 10, 26, 0.72)',
+        backdropFilter: 'blur(20px) saturate(170%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
+      }}
+    >
+      <div className="flex justify-center">{stickArea}</div>
     </div>
   );
 }

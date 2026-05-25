@@ -12,36 +12,17 @@ const NAV_BUTTONS = [
 export default function TopBar() {
   const openOverlay = useAppStore((s) => s.openOverlay);
   const setOpenOverlay = useAppStore((s) => s.setOpenOverlay);
-  const chatPanelOpen = useAppStore((s) => s.chatPanelOpen);
-  const toggleChatPanel = useAppStore((s) => s.toggleChatPanel);
 
   return (
     <header
-      className="relative z-20 flex h-[72px] shrink-0 items-center border-b border-white/[0.05] px-3 sm:px-4"
+      className="relative z-20 flex h-[72px] shrink-0 items-center justify-center border-b border-white/[0.05] px-3 sm:px-4"
       style={{
         background: 'rgba(10, 8, 32, 0.32)',
         backdropFilter: 'blur(24px) saturate(160%)',
         WebkitBackdropFilter: 'blur(24px) saturate(160%)',
       }}
     >
-      <button
-        type="button"
-        onClick={toggleChatPanel}
-        className={`mr-2 grid h-11 w-11 shrink-0 place-items-center rounded-2xl border transition-colors lg:hidden ${
-          chatPanelOpen
-            ? 'border-[var(--color-neon-cyan)]/45 bg-[var(--color-neon-cyan)]/12 text-[var(--color-neon-cyan)]'
-            : 'border-white/[0.08] bg-white/[0.03] text-white/80 hover:border-white/[0.14] hover:bg-white/[0.06]'
-        }`}
-        aria-label={chatPanelOpen ? 'チャットを閉じる' : 'チャットを開く'}
-        aria-expanded={chatPanelOpen}
-      >
-        <span className="flex flex-col items-center justify-center gap-[5px]" aria-hidden>
-          <span className="block h-[2px] w-[18px] rounded-full bg-current" />
-          <span className="block h-[2px] w-[18px] rounded-full bg-current" />
-          <span className="block h-[2px] w-[18px] rounded-full bg-current" />
-        </span>
-      </button>
-      <nav className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto sm:gap-2">
+      <nav className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto sm:gap-2">
         {NAV_BUTTONS.map((btn) => {
           const active = openOverlay === btn.id;
           return (

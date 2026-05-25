@@ -47,6 +47,7 @@ export default function WorldScene() {
   const currentSpeaker = useAppStore((s) => s.currentSpeaker);
   const controlMode = useAppStore((s) => s.controlMode);
   const cameraMode = useAppStore((s) => s.cameraMode);
+  const thirdCameraDistance = useAppStore((s) => s.thirdCameraDistance);
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
   const clone = useAppStore((s) => s.clone);
@@ -629,7 +630,9 @@ export default function WorldScene() {
       cameraTarget.current.set(nextPos.x, nextPos.y, nextPos.z);
 
       if (cameraMode === 'third') {
-        cameraOffset.current.set(-facingX * 4.1, 2.45, -facingZ * 4.1);
+        const dist = thirdCameraDistance;
+        const height = 2.45 * (dist / 4.1);
+        cameraOffset.current.set(-facingX * dist, height, -facingZ * dist);
         cameraLookAt.current.set(
           nextPos.x + facingX * 1.6,
           nextPos.y + 1.1,

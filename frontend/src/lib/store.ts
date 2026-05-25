@@ -88,6 +88,8 @@ interface AppState {
   hydrated: boolean;
   openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null;
   chatPanelOpen: boolean;
+  hudMenuOpen: boolean;
+  thirdCameraDistance: number;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
   humanFriends: HumanFriend[];
@@ -121,6 +123,9 @@ interface AppState {
   setOpenOverlay: (o: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null) => void;
   setChatPanelOpen: (open: boolean) => void;
   toggleChatPanel: () => void;
+  setHudMenuOpen: (open: boolean) => void;
+  toggleHudMenu: () => void;
+  adjustThirdCameraDistance: (delta: number) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
   setChatTarget: (target: ChatTarget) => void;
@@ -159,6 +164,8 @@ export const useAppStore = create<AppState>((set) => ({
   hydrated: false,
   openOverlay: null,
   chatPanelOpen: false,
+  hudMenuOpen: true,
+  thirdCameraDistance: 4.1,
   chatTrigger: null,
   myFriendId: generateFriendId(),
   humanFriends: DEMO_HUMAN_FRIENDS,
@@ -203,6 +210,15 @@ export const useAppStore = create<AppState>((set) => ({
   setChatPanelOpen: (chatPanelOpen) => set({ chatPanelOpen }),
   toggleChatPanel: () =>
     set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
+  setHudMenuOpen: (hudMenuOpen) => set({ hudMenuOpen }),
+  toggleHudMenu: () => set((s) => ({ hudMenuOpen: !s.hudMenuOpen })),
+  adjustThirdCameraDistance: (delta) =>
+    set((s) => ({
+      thirdCameraDistance: Math.min(
+        7.5,
+        Math.max(2.5, Number((s.thirdCameraDistance + delta).toFixed(2))),
+      ),
+    })),
   setChatTrigger: (chatTrigger) => set({ chatTrigger }),
   addHumanFriend: (friendId) => {
     const cleaned = friendId.trim().toUpperCase();

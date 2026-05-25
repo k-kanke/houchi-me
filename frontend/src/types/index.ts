@@ -35,6 +35,16 @@ export interface Topic {
   createdAt: string;
 }
 
+export interface CloneActivity {
+  id: string;
+  cloneId: string;
+  occurredAt: string;
+  location: string;
+  activityType: string;
+  summary: string;
+  createdAt: string;
+}
+
 export interface Message {
   id: string;
   role: 'user' | 'clone';

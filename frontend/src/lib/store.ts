@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type {
   ChatTarget,
   Clone,
+  CloneActivity,
   ControlMode,
   Feedback,
   HumanFriend,
@@ -73,6 +74,8 @@ interface RoomChatState {
 interface AppState {
   clone: Clone | null;
   topics: Topic[];
+  activities: CloneActivity[];
+  latestActivity: CloneActivity | null;
   messages: Message[];
   feedback: Record<string, Feedback>;
   viewTab: ViewTab;
@@ -98,6 +101,8 @@ interface AppState {
   setClone: (clone: Clone | null) => void;
   setTopics: (topics: Topic[]) => void;
   addTopic: (topic: Topic) => void;
+  setActivities: (activities: CloneActivity[]) => void;
+  setLatestActivity: (activity: CloneActivity | null) => void;
   setMessages: (messages: Message[]) => void;
   appendMessage: (message: Message) => void;
   updateMessage: (id: string, text: string) => void;
@@ -135,6 +140,8 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   clone: null,
   topics: [],
+  activities: [],
+  latestActivity: null,
   messages: [],
   feedback: {},
   viewTab: 'world',
@@ -161,6 +168,8 @@ export const useAppStore = create<AppState>((set) => ({
   setTopics: (topics) => set({ topics }),
   addTopic: (topic) =>
     set((s) => ({ topics: [topic, ...s.topics.filter((t) => t.id !== topic.id)] })),
+  setActivities: (activities) => set({ activities }),
+  setLatestActivity: (latestActivity) => set({ latestActivity }),
   setMessages: (messages) => set({ messages }),
   appendMessage: (message) =>
     set((s) => ({ messages: [...s.messages, message] })),

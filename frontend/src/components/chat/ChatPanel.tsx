@@ -38,13 +38,16 @@ export default function ChatPanel() {
       const t = raw.trim();
       if (!t || !clone || sending) return;
       setSending(true);
+      const persistsMessages = engine.persistsMessages === true;
       const userMsg = {
         id: uuid(),
         role: 'user' as const,
         text: t,
         createdAt: nowIso(),
       };
-      await storage.appendMessage(userMsg);
+      if (!persistsMessages) {
+        await storage.appendMessage(userMsg);
+      }
       appendMessage(userMsg);
       setText('');
 
@@ -57,21 +60,32 @@ export default function ChatPanel() {
       };
       appendMessage(placeholder);
 
-      let acc = '';
-      if (fixedReply) {
-        for (const ch of FIXED_REPLY_TEXT) {
-          acc += ch;
-          updateMessage(cloneMsgId, acc);
-          await new Promise((r) => setTimeout(r, 24));
+      try {
+        let acc = '';
+        if (fixedReply) {
+          for (const ch of FIXED_REPLY_TEXT) {
+            acc += ch;
+            updateMessage(cloneMsgId, acc);
+            await new Promise((r) => setTimeout(r, 24));
+          }
+        } else {
+          for await (const chunk of engine.chatStream(clone, messages, t)) {
+            acc += chunk;
+            updateMessage(cloneMsgId, acc);
+          }
         }
-      } else {
-        for await (const chunk of engine.chatStream(clone, messages, t)) {
-          acc += chunk;
-          updateMessage(cloneMsgId, acc);
+        if (!persistsMessages) {
+          await storage.appendMessage({ ...placeholder, text: acc });
         }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unexpected error';
+        updateMessage(
+          cloneMsgId,
+          `接続に失敗しました。少し時間をおいてもう一度試してください。(${message})`,
+        );
+      } finally {
+        setSending(false);
       }
-      await storage.appendMessage({ ...placeholder, text: acc });
-      setSending(false);
     },
     [clone, sending, messages, appendMessage, updateMessage],
   );
@@ -80,7 +94,10 @@ export default function ChatPanel() {
     if (!chatTrigger) return;
     const { message, fixedReply } = chatTrigger;
     setChatTrigger(null);
-    void send(message, fixedReply);
+    const timer = window.setTimeout(() => {
+      void send(message, fixedReply);
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [chatTrigger, setChatTrigger, send]);
 
   return (

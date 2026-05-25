@@ -14,34 +14,61 @@ export default function Home() {
   const clone = useAppStore((s) => s.clone);
   const setClone = useAppStore((s) => s.setClone);
   const setTopics = useAppStore((s) => s.setTopics);
+  const setActivities = useAppStore((s) => s.setActivities);
+  const setLatestActivity = useAppStore((s) => s.setLatestActivity);
   const setMessages = useAppStore((s) => s.setMessages);
   const setFeedback = useAppStore((s) => s.setFeedback);
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const c = await storage.getClone();
-      if (cancelled) return;
-      if (!c) {
-        router.replace('/onboarding');
-        return;
+      try {
+        const c = await storage.getClone();
+        if (cancelled) return;
+        if (!c) {
+          router.replace('/onboarding');
+          return;
+        }
+        setClone(c);
+        const [topics, activities, latestActivity, messages, feedback] = await Promise.all([
+          storage.getTopics(),
+          storage.getTodayActivities(),
+          storage.getLatestActivity(),
+          storage.getMessages(),
+          storage.getFeedback(),
+        ]);
+        if (cancelled) return;
+        setTopics(topics);
+        setActivities(activities);
+        setLatestActivity(latestActivity);
+        setMessages(messages);
+        setFeedback(feedback);
+      } catch (error) {
+        console.warn('Failed to hydrate app data:', error);
+        if (cancelled) return;
+        setTopics([]);
+        setActivities([]);
+        setLatestActivity(null);
+        setMessages([]);
+        setFeedback({});
+      } finally {
+        if (!cancelled) {
+          setHydrating(false);
+        }
       }
-      setClone(c);
-      const [topics, messages, feedback] = await Promise.all([
-        storage.getTopics(),
-        storage.getMessages(),
-        storage.getFeedback(),
-      ]);
-      if (cancelled) return;
-      setTopics(topics);
-      setMessages(messages);
-      setFeedback(feedback);
-      setHydrating(false);
     })();
     return () => {
       cancelled = true;
     };
-  }, [router, setClone, setTopics, setMessages, setFeedback]);
+  }, [
+    router,
+    setClone,
+    setTopics,
+    setActivities,
+    setLatestActivity,
+    setMessages,
+    setFeedback,
+  ]);
 
   if (!clone || hydrating || showLoader) {
     return (

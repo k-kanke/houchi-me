@@ -53,15 +53,24 @@ export default function ChatView() {
     };
     appendMessage(placeholder);
 
-    let acc = '';
-    for await (const chunk of engine.chatStream(clone, messages, t)) {
-      acc += chunk;
-      updateMessage(cloneMsgId, acc);
+    try {
+      let acc = '';
+      for await (const chunk of engine.chatStream(clone, messages, t)) {
+        acc += chunk;
+        updateMessage(cloneMsgId, acc);
+      }
+      if (!persistsMessages) {
+        await storage.appendMessage({ ...placeholder, text: acc });
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unexpected error';
+      updateMessage(
+        cloneMsgId,
+        `接続に失敗しました。少し時間をおいてもう一度試してください。(${message})`,
+      );
+    } finally {
+      setSending(false);
     }
-    if (!persistsMessages) {
-      await storage.appendMessage({ ...placeholder, text: acc });
-    }
-    setSending(false);
   };
 
   return (

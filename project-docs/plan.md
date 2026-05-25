@@ -96,12 +96,12 @@ DB（HO-101）と並行または直後に実施。**API キーは Supabase Edge 
 |----|-----|------|----------|------------|
 | 5 | **HO-110** | 阿部勝寿 | Gemini API 接続基盤（共通クライアント・モデル・エラーハンドリング） | `functions/_shared/gemini.ts` から 1 回呼べる |
 | 6 | **HO-111** | 阿部勝寿 | クローンエージェント共通層（人格 system prompt・コンテキスト組み立て） | `clone_profiles` + 直近 activities を渡して応答が一貫 |
-| 7 | **HO-112** | 王蕙鈺 | FE: `invokeCloneApi` ラッパー + **ダミーはフォールバックのみ** | `hochiDummy.js` を本番経路から外す |
+| 7 | ✅ **HO-112** | 王蕙鈺 | FE: `invokeCloneApi` ラッパー + **ダミーはフォールバックのみ** | `clone-engine.ts` で Edge Functions 経由に統一済み |
 | 8 | **HO-113** | 阿部勝寿 | **`clone-chat`**（Gemini・会話履歴・`chat_messages` 保存） | チャット送信 → クローン口調で返答（§HO-401） |
 | 9 | **HO-114** | 阿部勝寿 | **`simulate-clone-day`**（エージェント風：1日分 activities → Topic → notes） | 「今日を要約」で DB に活動＋Topic が入る（§HO-301） |
 | 10 | **HO-115** | 阿部勝寿 | **`encounter-dialogue`**（Sage/Echo 吹き出しを LLM 生成、任意で DB 保存） | 固定 `conversation[]` を LLM 会話に差し替え可 |
 | 11 | **HO-116** | 阿部勝寿 | **`apply-daily-answers`**（回答を Gemini で解釈 → 同期率・vitals 更新） | 質問回答後に数値・探索バイアスが変わる（§HO-405） |
-| 12 | **HO-117** | 王蕙鈺 | **ダミー UI 接続**：Topic オーバーレイ・チャット・「いま」文を API 結果表示 | `WorldScreen` / `TopicScreen` が `hochiDummy` 非依存 |
+| 12 | ✅ **HO-117** | 王蕙鈺 | **ダミー UI 接続**：Topic オーバーレイ・チャット・「いま」文を API 結果表示 | Topic / Chat / Now / Timeline を Edge Functions + DB 結果へ接続済み |
 
 #### スプリント 2 — Must 機能の画面と API（FE + BE）
 
@@ -460,12 +460,12 @@ FE 側のモック差し替えポイント：
 |----|------|--------|--------|------|
 | HO-110 | Must | LLM API 基盤（Secret、共通クライアント） | `functions/_shared/` 等 | 阿部勝寿 |
 | HO-111 | Must | クローンエージェント共通層（persona + `buildCloneContext`） | `_shared/cloneContext.ts` 等 | 阿部勝寿 |
-| HO-112 | Must | FE API ラッパー・ダミーはフォールバックのみ | `clone-engine.ts` 接続 | 王蕙鈺 |
+| ✅ HO-112 | Must | FE API ラッパー・ダミーはフォールバックのみ | `clone-engine.ts` に `invokeCloneApi` 実装済み | 王蕙鈺 |
 | HO-113 | Must | `clone-chat`（LLM・`chat_messages`） | `functions/clone-chat/` | 阿部勝寿 |
 | HO-114 | Must | `simulate-clone-day`（1日シミュレーション → Topic/notes/activities） | `functions/simulate-clone-day/` | 阿部勝寿 |
 | HO-115 | Should | `encounter-dialogue`（吹き出し会話・交差 Topic） | `functions/encounter-dialogue/` | 阿部勝寿 |
 | HO-116 | Must | `apply-daily-answers`（回答解釈 → 同期率等） | `functions/apply-daily-answers/` | 阿部勝寿 |
-| HO-117 | Must | Topic/チャット/いま/タイムラインの **ダミー除去**・API 結果を UI にバインド | 各 View / store | 王蕙鈺 |
+| ✅ HO-117 | Must | Topic/チャット/いま/タイムラインの **ダミー除去**・API 結果を UI にバインド | `clone_activities` を store 経由で Now / Timeline に表示 | 王蕙鈺 |
 | HO-118 | Should | `parse-clone-command`（自然言語指示） | `functions/parse-clone-command/` | 阿部勝寿 |
 
 ### Phase B — クローン作成・DB（Day 1 PM）
@@ -681,12 +681,12 @@ frontend/
 ### Phase AI — **← Gemini + Supabase Edge Functions**
 - [x] HO-110（共通 Gemini クライアント: `backend/supabase/functions/_shared/gemini.ts`）
 - [x] HO-111（人格 system プロンプト + コンテキスト組み立て: `backend/supabase/functions/_shared/clone-context.ts`）
-- [ ] HO-112（FE 抽象は実装済み。UI からの本番経路確認が残り）
+- [x] HO-112（`invokeCloneApi` + Edge Functions 優先 / dummy fallback を `clone-engine.ts` に実装済み）
 - [x] HO-113（`backend/supabase/functions/clone-chat/`）
 - [x] HO-114（`backend/supabase/functions/simulate-clone-day/`）
 - [x] HO-115（`backend/supabase/functions/encounter-dialogue/`）
 - [x] HO-116（`backend/supabase/functions/apply-daily-answers/`）
-- [ ] HO-117（モック UI → Gemini 結果に差替。UI 側の確認と空状態調整）
+- [x] HO-117（モック UI → Gemini/DB 結果に差替。Now / Timeline 空状態も追加）
 - [x] HO-118（`backend/supabase/functions/parse-clone-command/`）
 
 ### Phase C
@@ -694,8 +694,8 @@ frontend/
 - [x] HO-202（4カメラ：`CameraButtons.tsx` / `CameraRig.tsx`）
 - [x] HO-203（ミニマップ：`sidebar/MiniMap.tsx`）
 - [x] HO-204（クローンカード・バイタル：`sidebar/CloneStatusCard.tsx` / `Vitals.tsx`、DB 未連携）
-- [ ] HO-205（NowCard モック表示中：`panel/NowCard.tsx`。DB 化は HO-114 後）
-- [ ] HO-206（Timeline モック表示中：`panel/Timeline.tsx`。DB 化は HO-114 後）
+- [x] HO-205（NowCard: 最新 `clone_activities` を表示。未生成時は空状態）
+- [x] HO-206（Timeline: 当日 `clone_activities` を表示。未生成時は空状態）
 - [x] HO-207（CommandBar UI：`layout/CommandBar.tsx`。送信先 LLM は HO-403/118）
 - [x] HO-208（吹き出し会話：固定 → LLM 差替は HO-115）
 

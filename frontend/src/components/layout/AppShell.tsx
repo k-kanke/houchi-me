@@ -21,6 +21,8 @@ export default function AppShell() {
   const topics = useAppStore((s) => s.topics);
   const setTopics = useAppStore((s) => s.setTopics);
   const addTopic = useAppStore((s) => s.addTopic);
+  const setActivities = useAppStore((s) => s.setActivities);
+  const setLatestActivity = useAppStore((s) => s.setLatestActivity);
 
   useEffect(() => {
     if (!clone) return;
@@ -36,14 +38,20 @@ export default function AppShell() {
       const history = await storage.getTopics();
       const topic = await engine.generateTodaysTopic(clone, history);
       await storage.saveTopic(topic);
+      const [activities, latestActivity] = await Promise.all([
+        storage.getTodayActivities(),
+        storage.getLatestActivity(),
+      ]);
       if (!cancelled) {
         setTopics([topic, ...history.filter((t) => t.id !== topic.id)]);
+        setActivities(activities);
+        setLatestActivity(latestActivity);
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [clone, topics, setTopics, addTopic]);
+  }, [clone, topics, setTopics, addTopic, setActivities, setLatestActivity]);
 
   return (
     <div className="relative z-10 flex h-screen flex-col">

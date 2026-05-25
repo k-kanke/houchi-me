@@ -1,5 +1,5 @@
 import { getSupabase } from '@/lib/supabase';
-import type { Clone, EncounterLog, Feedback, Message, Topic } from '@/types';
+import type { Clone, CloneActivity, EncounterLog, Feedback, Message, Topic } from '@/types';
 
 export interface Storage {
   getClone(): Promise<Clone | null>;
@@ -8,6 +8,8 @@ export interface Storage {
   getTopics(): Promise<Topic[]>;
   getTodaysTopic(dateKey: string): Promise<Topic | null>;
   saveTopic(topic: Topic): Promise<void>;
+  getTodayActivities(): Promise<CloneActivity[]>;
+  getLatestActivity(): Promise<CloneActivity | null>;
   getFeedback(): Promise<Record<string, Feedback>>;
   saveFeedback(feedback: Feedback): Promise<void>;
   getMessages(): Promise<Message[]>;
@@ -38,6 +40,41 @@ function readJSON<T>(key: string, fallback: T): T {
 function writeJSON<T>(key: string, value: T): void {
   if (typeof window === 'undefined') return;
   window.localStorage.setItem(key, JSON.stringify(value));
+}
+
+function todayKey(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate(),
+  ).padStart(2, '0')}`;
+}
+
+function parseExplorationPath(path: string, index: number) {
+  const timeMatch = path.match(/^(\d{2}:\d{2})\s+(.+)$/);
+  const time = timeMatch?.[1] ?? `${String(9 + index * 2).padStart(2, '0')}:00`;
+  const summary = timeMatch?.[2] ?? path;
+  const [locationCandidate, ...rest] = summary.split(/[：:]/);
+  const location = rest.length > 0 ? locationCandidate.trim() : '叡智の図書館';
+  const text = rest.length > 0 ? rest.join('：').trim() : summary;
+
+  return { time, location, summary: text };
+}
+
+function topicToActivities(topic: Topic): CloneActivity[] {
+  return topic.explorationPath
+    .map((path, index) => {
+      const parsed = parseExplorationPath(path, index);
+      return {
+        id: `${topic.id}-activity-${index}`,
+        cloneId: '',
+        occurredAt: `${topic.dateKey}T${parsed.time}:00.000Z`,
+        location: parsed.location,
+        activityType: index === 0 ? 'reading' : index === 1 ? 'exploration' : 'reflection',
+        summary: parsed.summary,
+        createdAt: topic.createdAt,
+      };
+    })
+    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt));
 }
 
 function buildMockEncounterLogs(clone: Clone | null): EncounterLog[] {
@@ -155,6 +192,14 @@ export class LocalStorageImpl implements Storage {
     const next = [topic, ...topics.filter((t) => t.id !== topic.id)];
     writeJSON(KEYS.topics, next);
   }
+  async getTodayActivities(): Promise<CloneActivity[]> {
+    const todaysTopic = await this.getTodaysTopic(todayKey());
+    return todaysTopic ? topicToActivities(todaysTopic) : [];
+  }
+  async getLatestActivity(): Promise<CloneActivity | null> {
+    const activities = await this.getTodayActivities();
+    return activities[0] ?? null;
+  }
   async getFeedback(): Promise<Record<string, Feedback>> {
     return readJSON<Record<string, Feedback>>(KEYS.feedback, {});
   }
@@ -223,6 +268,18 @@ function rowToMessage(r: Record<string, unknown>): Message {
     id: r.id as string,
     role: r.role as Message['role'],
     text: r.text as string,
+    createdAt: r.created_at as string,
+  };
+}
+
+function rowToActivity(r: Record<string, unknown>): CloneActivity {
+  return {
+    id: r.id as string,
+    cloneId: r.clone_id as string,
+    occurredAt: r.occurred_at as string,
+    location: r.location as string,
+    activityType: r.activity_type as string,
+    summary: r.summary as string,
     createdAt: r.created_at as string,
   };
 }
@@ -336,6 +393,44 @@ export class SupabaseImpl implements Storage {
       related_concepts: topic.relatedConcepts,
     });
     if (error) throw error;
+  }
+
+  async getTodayActivities(): Promise<CloneActivity[]> {
+    const cloneId = await this.fetchCloneId();
+    if (!cloneId) return [];
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const { data, error } = await getSupabase()
+      .from('clone_activities')
+      .select('*')
+      .eq('clone_id', cloneId)
+      .gte('occurred_at', start.toISOString())
+      .lt('occurred_at', end.toISOString())
+      .order('occurred_at', { ascending: false });
+    if (error) throw error;
+    return (data ?? []).map((r) => rowToActivity(r as Record<string, unknown>));
+  }
+
+  async getLatestActivity(): Promise<CloneActivity | null> {
+    const cloneId = await this.fetchCloneId();
+    if (!cloneId) return null;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
+    const { data, error } = await getSupabase()
+      .from('clone_activities')
+      .select('*')
+      .eq('clone_id', cloneId)
+      .gte('occurred_at', start.toISOString())
+      .lt('occurred_at', end.toISOString())
+      .order('occurred_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw error;
+    return data ? rowToActivity(data as Record<string, unknown>) : null;
   }
 
   async getFeedback(): Promise<Record<string, Feedback>> {

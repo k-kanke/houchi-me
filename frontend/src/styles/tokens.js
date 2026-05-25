@@ -1,4 +1,19 @@
-// デザイントークン — 全画面で共有
+// 放置me — 仮想世界 UI トークン（index.html モック準拠）
+export const hochiColors = {
+  bg0: '#03040f',
+  bg1: '#07091e',
+  neonCyan: '#4ff5e7',
+  neonViolet: '#a378ff',
+  neonPink: '#ff6ec7',
+  neonAmber: '#ffc774',
+  neonGreen: '#74ffa8',
+  text0: '#ffffff',
+  text1: '#d8dbf2',
+  text2: '#8f93b8',
+  text3: '#5b5f86',
+}
+
+// 旧 Curio Meet（未使用画面用・残置）
 export const colors = {
   bgPrimary: '#0A0A0A',
   bgSecondary: '#141414',
@@ -12,7 +27,6 @@ export const colors = {
   success: '#00E5A0',
 }
 
-// ジャンル別のサムネ用グラデ＋絵文字
 export const genreVisuals = {
   'ものづくり': {
     gradient: 'linear-gradient(135deg, #3a1f0a 0%, #8a4a1f 50%, #c47438 100%)',

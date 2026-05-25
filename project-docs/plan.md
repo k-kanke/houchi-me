@@ -1,533 +1,488 @@
-# Curio Meet 実装計画（plan.md）
+# 放置me — 実装プラン（Hackathon 2026/05）
 
-> 作成日: 2026-05-24  
-> 対象: `team-05/` ディレクトリ  
-> 参照: プロダクト設計書（Curio Meet）、現行コードベース
-
----
-
-## 1. サマリー
-
-| 観点 | 現状 | 設計書の想定 |
-|------|------|--------------|
-| フロント | **React + Vite + Tailwind**（`curio-meet-mock`） | React Native / Expo Web |
-| バックエンド | **Supabase Auth / Postgres 接続済み** | Supabase（Auth / Postgres / Edge Functions） |
-| メディア | **未設定** | Cloudflare R2（画像）/ Cloudflare Stream（動画）/ Cloudflare CDN |
-| デプロイ | **Vercel 公開済み** | Vercel（main 連携・QR デモ URL） |
-| UI 完成度 | **MVP 画面 + DB 連携（フィード・予約・投稿）まで進行中** | 審査員が触れる「動く MVP」 |
-
-**結論**: 画面フロー・TikTok 風 UX に加え、**匿名 Auth・体験会 CRUD・予約 Edge Function・メディアアップロード基盤**まで実装済み。MVP 完走の中心ギャップは **参加後ログ／ポイント／好奇心マップの DB 連動** と **README・デモ品質の仕上げ**。  
-→ **担当別の残タスク一覧は [§4.1](#41-担当別未完了タスク早見表)**、**FE/BE/Design の進め方は [§6.0](#60-全体の進め方fe--be--design-の順序)** を参照。
-
-### 1.1 ギャップ解消チェックリスト
-
-- [x] フロントを Vercel にデプロイしデモ URL を公開
-- [x] Supabase（DB / Auth）を接続
-- [x] Cloudflare R2 / Stream / CDN を接続（`upload-media` Edge Function 実装済み。本番 Secrets・デプロイ要確認）
-- [ ] 予約・ログ・ポイントを Edge Functions 経由に移行（予約のみ完了、ログ・pt は未着手）
-- [ ] 好奇心マップをユーザー操作で更新可能にする
+> **プロダクト名**: 放置me  
+> **コピー**: あなたのクローンが、知らない自分を見つけてくる。 / 放置しておくほど、あなたが広がる。  
+> **モック（正）**: リポジトリ直下 [`index.html`](../index.html) — UI・3D・デザイントークンはここを唯一の参照源とする  
+> **設計書**: 本ドキュメント冒頭のプロダクト設計（2026-05 版）
 
 ---
 
-## 2. 現状実装マップ
+## 0. 現状と方針
 
-### 2.1 ディレクトリ構成
+| 項目 | 内容 |
+|------|------|
+| 旧プロダクト | Curio Meet（体験会フィード・予約）— `frontend/` に React + Supabase 実装あり |
+| 新プロダクト | 放置me — クローンAI × 3D「叡智の図書館」× 1日1Topic |
+| モック | `index.html`（Three.js r128、単一HTML、Clone OS v2 UI） |
+| 実装方針 | **見た目・3Dはモック移植を最優先**。データ・AI・認証は Supabase を継続利用しスキーマを置き換え |
 
-```
-team-05/
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx                 # タブ遷移・予約/ログ/投稿の状態管理
-│   │   ├── data/dummyData.js       # 体験会・ユーザー・好奇心マップ等の静的データ
-│   │   ├── screens/
-│   │   │   ├── HomeScreen.jsx      # 縦スナップフィード + モーダル
-│   │   │   ├── ProfileScreen.jsx   # プロフィール・マップ・予約・ログ・交換タブ
-│   │   │   ├── PostScreen.jsx      # 体験会投稿フォーム
-│   │   │   └── LogScreen.jsx       # 参加後ログ（オーバーレイ）
-│   │   └── components/
-│   │       ├── ExperienceCard.jsx  # フィードカード
-│   │       ├── ExperienceModal.jsx # 詳細 + 予約完了
-│   │       ├── BottomTabBar.jsx    # Home / 投稿 / プロフィール
-│   │       └── …（Button, Badge, StarRating, PointBurst）
-│   └── package.json
-├── backend/
-│   └── supabase/
-└── README.md
-```
+### 0.1 モックから移植するもの（チェックリスト）
 
-### 2.2 画面別：設計書 vs 実装
+- [x] CSS 変数（`--neon-cyan`, `--bg-0` 等）と glass UI → `frontend/src/styles/world.css`
+- [x] グリッドレイアウト: `topbar / sidebar(280) / main / right(340) / command` → `WorldScreen.jsx`
+- [x] 3D: 叡智の図書館（半透明書架・中央デスク・天窓・集会場相当の空間） → `initLibraryScene.js`
+- [x] アバター: Mira / Sage / Echo パレット、吹き出し、名前タグ
+- [x] ウェイポイント巡回 + HUD 連動（座標・速度・現地時刻・パンくず）
+- [x] カメラ4種: 追従 / 軌道 / 俯瞰 / シネマ
+- [x] ミニマップ（2D canvas）
+- [x] 右パネル: いま / 今日のタイムライン / クローン統計（**データはダミー**）
+- [x] 左サイド: クローンカード・バイタル・ワールド・ページツリー
 
-- [x] **Home フィード**（縦型ショート動画風 UI）— 画像/動画ではなくジャンル別グラデ＋絵文字、`feed-snap` で縦スクロール
-- [x] 体験会情報オーバーレイ（タイトル・場所・費用・pt 等）— `ExperienceCard` 左下キャプション + CTA
-- [x] 詳細モーダル（Home 上で完結）— `ExperienceModal` ボトムシート
-- [x] モーダル内予約（確認画面なしで完了）— ローカル `reservations` に追加
-- [x] 予約完了表示（文言・+30pt 案内）— モーダル内 `completed` 状態
-- [x] **プロフィール** UI（pt・称号・マップ・予約・ログ）
-- [ ] プロフィール：好奇心マップの動的更新（現状は `dummyData.curiosityMap` 固定）
-- [x] 称号・次の称号まで（表示のみ）
-- [ ] 称号のログ連動による自動更新
-- [x] 予約中一覧（プロフィール「予約中」タブ — DB `status=reserved` 連携済み）
-- [ ] 参加済みログ一覧（「ログ」タブ — 現状 `dummyData.initialLogs` + ローカル state）
-- [x] 商品券交換イメージ（「近日公開」表示、実交換なし）
-- [x] **体験会投稿** フォーム → Home 反映（`userPosts` マージ、画像はプレースホルダ）
-- [x] **参加後ログ** UI（感想・星・次ジャンル・pt）
-- [ ] 参加後ログ：保存後の好奇心マップ連動（ハードコード表示のみ）
-- [ ] 保存ボタン（フィード）の永続化（カード内ブックマークはローカル UI のみ）
-- [ ] フォロー中タブの実装（MVP 外・UI シェルのみ）
-- [ ] 検索機能（ボタンのみ）
+### 0.3 現在地（Milestone A 完了 — 2026-05-25）
 
-### 2.3 コアユーザーフロー（最短体験）
+**デプロイ可能なデモ**まで到達済み。`frontend/` を `npm run dev` / Vercel で開ける。
 
-```
-Home 閲覧 → 詳細モーダル → 予約 →（参加想定）→ プロフィールからログ → pt 表示
-```
+| 領域 | 状態 | 主なファイル |
+|------|------|----------------|
+| 3D + UI シェル | 完了 | `WorldScreen.jsx`, `initLibraryScene.js`, `world.css` |
+| クローン作成 | **LocalStorage のみ** | `OnboardingModal.jsx`, `hochiDummy.js` |
+| Topic / チャット / ノート | **オーバーレイ + 固定ダミー** | `WorldScreen.jsx` 内 overlay |
+| Supabase / AI | **未着手** | 旧 Curio スキーマ・画面は残存 |
+| デプロイ | `vercel.json` 追加済み | `frontend/vercel.json` |
 
-- [x] 1–4 閲覧・モーダル
-- [x] 5 予約（`reserve-experience` Edge Function 経由、リロード後も DB から復元）
-- [x] 5 定員超過チェック（Edge Function で 409 返却）
-- [ ] 5 予約後のフィード定員表示同期（`reserved_count` 再取得未実装）
-- [ ] 6–7 参加ステータス遷移（予約 → joined。現状はログで `completed` のみ）
-- [x] 8 ログ投稿（同一セッション内）
-- [ ] 8 好奇心マップ・ニッチ pt の連動
-- [ ] 9 pt・マップ更新（pt は +30 固定、マップは画面文言のみ）
+**まだ Must として未達のもの**: DB 永続化、AI による Topic/チャット、毎日の質問、興味マップ・ノート・タイムラインの専用画面と API 連携。
 
-### 2.4 技術スタックの差分
+### 0.4 ここから取り組むタスク（推奨順）
 
-- [x] フロント UI 実装（Vite React）
-- [x] フロント Vercel デプロイ（MVP-005 完了。Preview Deploy は POST-103）
-- [x] DB: Supabase Postgres + スキーマ + CRUD（experiences / reservations / users）
-- [x] 認証: Supabase Auth（匿名ログイン）
-- [ ] 重要処理: Edge Functions（予約完了、ログ・pt は未移行）
-- [ ] Storage: メディアアップロード（Function 実装済み、本番デプロイ・エラー UX 要確認）
-- [x] デプロイ: Vercel main 連携
+> 着手前は [rule.md](./rule.md) で **LINE 担当宣言** → ブランチ `feat/ho-xxx-...` → PR 時に §10 のチェックを更新。
 
-### 2.5 データモデル（設計書 §13）の充足度
+#### スプリント 1 — データ基盤（最優先・並行可）
 
-- [x] `users` — Auth 連携・作成・取得（`avatar` / `nextTitlePoints` / `joinedCount` は UI のみ、DB 未整備）
-- [x] `experiences` — CRUD 接続済み（`niche_score` / `point_reward` は投稿時未設定、シードのみ）
-- [x] `reservations` — Edge Function 経由 insert、`status` 管理
-- [ ] `experience_logs` — スキーマあり、フロント未連携
-- [ ] `curiosity_map_items` — シードあり、ユーザー操作での更新未実装
-- [ ] `point_transactions` — スキーマのみ、書き込み未実装
+バックエンドがないと以降の Must がすべてダミーのままになる。**HO-101 → HO-102 → HO-104** を先に通す。
 
----
+| 順 | ID | やること | 完了の目安 |
+|----|-----|----------|------------|
+| 1 | **HO-101** | 放置me 用マイグレーション + RLS | `clones`, `clone_activities`, `daily_topics`, `notes` 等が作成される |
+| 2 | **HO-102** | シード（叡智の図書館・4ロケーション・NPC Sage/Echo） | ローカル Supabase で参照データが入る |
+| 3 | **HO-104** | オンボーディング → `clones` + `clone_profiles` を Supabase に保存 | LocalStorage から DB へ移行 |
+| 4 | **HO-105** | 未作成クローン時はオンボーディングへ（現状ロジックの DB 版） | 新規ユーザーで DB に clone が無いと作成画面 |
 
-## 3. MVP の定義（本 plan での境界）
+#### スプリント 2 — Must 機能の画面と API（FE + BE）
 
-設計書 **§7 MVP スコープ** と **§18 Must / Should** に沿い、ハッカソン 3 日間で「審査員が端末（ブラウザ）で一連の体験を完走できる」状態を MVP とする。
+| 順 | ID | やること | 完了の目安 |
+|----|-----|----------|------------|
+| 5 | **HO-301** | Edge Function `simulate-clone-day`（デモ用「今日を生成」ボタン可） | `daily_topics` + タイムライン行が DB から出る |
+| 6 | **HO-302** + **HO-303** | 今日の Topic 専用画面 + フィードバック（気になる/違う/もっと知りたい） | オーバーレイから独立画面へ |
+| 7 | **HO-205** + **HO-206** | 右パネル「いま」「タイムライン」を `clone_activities` 購読 | ウェイポイント到達と DB が一致 |
+| 8 | **HO-401** + **HO-402** | `clone-chat` EF + チャット画面（クイック質問チップ） | 送信で LLM 応答が返る |
+| 9 | **HO-404** + **HO-405** | 毎日の質問 UI + `apply-daily-answers` | 回答後に同期率・バイタルが更新される |
+| 10 | **HO-304** + **HO-305** + **HO-306** | 興味マップ・ノート一覧/詳細・左ツリー連動 | ナレッジベースが DB 駆動 |
+| 11 | **HO-501** | タイムライン画面（日別・過去遡り） | 右パネル履歴のフルスクリーン版 |
 
-### 3.1 MVP に含める（Must + 審査デモに必要な Should）
+#### スプリント 3 — 仕上げ・発表（Should / インフラ）
 
-- [ ] Home フィード → モーダル → **予約が DB に残る**
-- [ ] 体験会投稿 → **Home に表示され他ユーザーからも見える**（同一 DB）
-- [ ] 予約済み → プロフィール表示 → **参加後ログ** → **pt 加算**
-- [ ] **好奇心マップがログ／参加に応じて更新される**（最低：該当ジャンルの Lv +1）
-- [ ] **ポイント履歴**（簡易で可）と表示上の総 pt 一致
-- [ ] **Vercel デプロイ** + README にデモ URL
-- [ ] ダミーデータのシード（体験会供給リスク対策）
+| 順 | ID | やること | 備考 |
+|----|-----|----------|------|
+| 12 | **HO-103** | オンボーディングを設計書どおり項目拡充（苦手・なりたい自分等） | HO-104 後でも可 |
+| 13 | **HO-403** | コマンドバー → 指示パース or チャット送信 | 「西の書架へ」デモ |
+| 14 | **HO-003** | `WorldScreen` をコンポーネント分割（`WorldLayout`, `CommandBar` 等） | リファクタ・任意 |
+| 15 | **HO-004** | `initLibraryScene.js` を `avatars.js` / `waypoints.js` に分割 | 保守性向上・任意 |
+| 16 | **HO-502** ~ **HO-506** | フレンド・出会い・性格再設定・探索モード | Should・時間があれば |
+| 17 | **HO-601** | Production デモ URL を README に記載 | `main` マージ後 |
+| 18 | **HO-602** + **HO-603** | 発表シナリオ doc + スクリーンショット | 提出前 |
 
-### 3.2 MVP に含めない（設計書 §7 MVP 外 / §18 Won't）
+#### いま担当を取りやすいタスク（単独で切り出し可能）
 
-> スコープ外の確認用。実装したらチェックではなく、意図的に見送った印。
+| ID | 一人で完結しやすい | ブロッカー |
+|----|-------------------|-----------|
+| HO-101 | ◎ | なし |
+| HO-102 | ◎（HO-101 後） | HO-101 |
+| HO-302 | ○（ダミーのまま UI だけ先） | なし |
+| HO-304 | ○ | なし |
+| HO-501 | ○ | なし |
+| HO-601 | ◎ | `main` push 権限 |
+| HO-602 | ◎ | なし |
 
-- [x] AI 翻訳 — 見送り
-- [x] ランキング — 見送り
-- [x] 実決済 — 見送り
-- [x] 本人確認 — 見送り
-- [x] チャット — 見送り
-- [x] レビュー — 見送り
-- [x] 通知 — 見送り
-- [x] 高度なレコメンド — 見送り
-- [x] 独立した体験会詳細ページ — 見送り
-- [x] 予約確認専用画面 — 見送り
-- [x] Random Box — 見送り（UI シェルは残して可）
-- [x] Following タブの実装 — 見送り（UI シェルは残して可）
-- [x] 商品券の実交換 — 見送り
-- [ ] 動画必須 — MVP に追加（Cloudflare Stream で対応）（画像で可）
-- [x] Expo への全面移行 — 見送り（Post-MVP）
+#### 意図的に後回し（Milestone A で十分なもの）
 
-### 3.3 Should の MVP 内扱い
+- **HO-006**（`@react-three/fiber`）— 現状の vanilla Three で問題なし
+- **HO-005**（Bloom）— オプション。パフォーマンス優先ならスキップ可
+- **HO-208**, **HO-202**, **HO-203** — 3D 上は **実装済み**（追加作業は DB 連携のみ）
+- 旧 Curio 画面削除 — ビルドに影響しないため **HO-501 以降**でまとめて削除可
 
-- [ ] 称号表示 + 閾値で自動更新（簡易ルール）
-- [ ] ニッチ度ポイント（`nicheScore` に基づく加算、Edge Function）
-- [ ] 予約中・参加済みログ表示の DB 連携
-- [x] 商品券交換イメージ（現状 UI のまま、実交換なし）
+### 0.2 MVP 優先度（設計書 §19 対応）
 
-### 3.4 Could は Post-MVP
-
-- [ ] 保存機能の永続化
-- [ ] 友達参加の pt ボーナス
-- [ ] クリエイター詳細ページ
-- [ ] フォロー中フィードの実装
+| 優先 | 機能 |
+|------|------|
+| **Must** | クローン作成、3Dワールドビュー、今日のTopic、理由説明、クローンチャット、毎日の質問、興味マップ、ノート、タイムライン |
+| **Should** | 他クローン吹き出し、フレンド、ユーザー間会話、性格変更、ロケーション選好、カメラ切替、ミニマップ |
+| **Could** | 音声入力、ランキング、共有カード、リアルタイム会話、複数ワールド、外見カスタム、SNS連携 |
 
 ---
 
-## 4. タスク一覧
-
-タスク ID は `MVP-xxx`（MVP 機能）、`DES-xxx`（デザイン）、`POST-xxx`（MVP 以降）で付与。  
-**優先度**: P0（ブロッカー） / P1（MVP 必須） / P2（MVP 余力） / P3（Post-MVP）  
-**担当**: 各タスク末尾に記載（`/` は分担）
-
-### 4.0 担当ロールと作業場所
-
-| ロール | 略称 | 主な作業場所 | 例 |
-|--------|------|--------------|-----|
-| フロント | **FE** | `frontend/src/` | 画面・コンポーネント・Supabase クライアント呼び出し |
-| バックエンド | **BE** | `backend/supabase/` | マイグレーション、RLS、Edge Functions、シード |
-| デザイン | **Design** | Figma（任意）+ `frontend/src/styles/tokens.js` + Tailwind | トークン、レイアウト、ビジュアル polish |
-| インフラ | **Infra** | Vercel / Supabase Dashboard / Cloudflare / `.github/` | デプロイ、Secrets、CI |
-| PM | **PM** | `README.md` / `project-docs/` | デモ URL、提出物、進捗管理 |
-
-> **FE / BE** と書いてあるタスクは、**API（BE）→ 画面接続（FE）** の順で進める。  
-> **Design / FE** は、Design が方針・トークンを決めてから FE が実装するのが理想。
-
-### 4.0.1 メンバーと担当方針
-
-| メンバー | 役割 | 主な担当 |
-|----------|------|----------|
-| **中村** | PM | 提出物・進捗管理・レビュー |
-| **菅家** | Infra / BE | デプロイ・Secrets・周辺 BE（スキーマ・付属ロジック） |
-| **阿部** | BE | コア Edge Functions（ログ・pt・マップ） |
-| **柴沼** | FE | 画面配線・DB 連携 |
-| **王** | Design / FE | デザイン全般・プロフィール / ログ / マップ UI polish |
-
----
-
-### 4.1 担当別：未完了タスク早見表
-
-#### BE（`backend/supabase/`）
-
-| 順 | ID | タスク | 優先度 | 担当 |
-|----|-----|--------|--------|------|
-| 1 | MVP-009 | Edge Functions 本番デプロイ & Secrets | P0 | 菅家 |
-| 2 | MVP-401 | `submit-experience-log` Edge Function | P0 | 阿部 |
-| 3 | MVP-404 | `curiosity_map_items` upsert | P0 | 阿部 |
-| 4 | MVP-402 | ポイントルール実装 | P1 | 阿部 |
-| 5 | MVP-403 | `point_transactions` 記録 | P1 | 菅家 |
-| 6 | MVP-104 | プロフィール用 DB フィールド追加（`joined_count` 等） | P1 | 菅家 |
-| 7 | MVP-202 | 投稿時 `niche_score` 付与 | P1 | 菅家 |
-| 8 | MVP-407 | 称号閾値 + `users.title` 更新 | P2 | 阿部 |
-| 9 | MVP-206 | 投稿時 `point_reward` 算出 | P2 | 菅家 |
-| 10 | MVP-207 | 投稿フォーム項目のスキーマ整理 | P3 | 菅家 |
-
-#### FE（`frontend/src/`）
-
-| 順 | ID | タスク | 優先度 | 依存 | 担当 |
-|----|-----|--------|--------|------|------|
-| 1 | MVP-410 | `handleSaveLog` → Edge Function 呼び出し | P0 | MVP-401 | 柴沼 |
-| 2 | MVP-406 | 好奇心マップ DB 連携 | P0 | MVP-404 | 柴沼 / 王 |
-| 3 | MVP-405 | ログ完了画面の動的表示 | P1 | MVP-401 | 柴沼 / 王 |
-| 4 | MVP-501 | 参加済みログ一覧 DB 取得 | P1 | MVP-401 | 柴沼 |
-| 5 | MVP-104 | プロフィール表示フィールド整合 | P1 | MVP-104 BE | 柴沼 |
-| 6 | MVP-602 | ローディング・エラー UI | P1 | — | 柴沼 / 王 |
-| 7 | MVP-601 | モバイル Web / safe-area 調整 | P1 | — | 柴沼 / 王 |
-| 8 | MVP-204 | メディア本番確認・フィード表示 | P1 | MVP-009 | 柴沼 |
-| 9 | MVP-209 | アップロード失敗通知 | P2 | — | 柴沼 |
-| 10 | MVP-305 | 予約後 `reserved_count` 再同期 | P2 | — | 柴沼 |
-| 11 | MVP-502 | ログカード `againRating` 表示 | P2 | MVP-501 | 柴沼 |
-| 12 | MVP-408 | 参加数・初体験ジャンル数表示 | P2 | MVP-403 | 柴沼 |
-| 13 | MVP-411 | `dummyData.js` 整理 | P2 | MVP-410, MVP-406 | 柴沼 |
-
-#### Design（UI/UX 仕上げ）
-
-| 順 | ID | タスク | 優先度 | いつやるか | 担当 |
-|----|-----|--------|--------|------------|------|
-| 1 | DES-001 | デザイントークン整備 | P1 | **今すぐ** | 王 |
-| 2 | DES-002 | Home / ExperienceCard polish | P1 | BE 作業と並行可 | 王 / 柴沼 |
-| 3 | DES-003 | ExperienceModal polish | P1 | BE 作業と並行可 | 王 / 柴沼 |
-| 4 | DES-007 | PostScreen polish | P2 | BE 作業と並行可 | 王 |
-| 5 | DES-005 | 好奇心マップ可視化 | P1 | **MVP-406 後** | 王 / 柴沼 |
-| 6 | DES-006 | LogScreen 完了画面 | P1 | **MVP-405/410 後** | 王 / 柴沼 |
-| 7 | DES-004 | プロフィール polish | P2 | MVP-104 後 | 王 |
-| 8 | DES-008 | エラー・空状態 UI | P1 | MVP-602 と同時 | 王 / 柴沼 |
-| 9 | DES-009 | 実機 Safari 調整 | P1 | MVP-601 と同時 | 王 / 柴沼 |
-| 10 | DES-010 | デモ用スクショ・README 素材 | P1 | **Day 3 提出前** | 王 / 中村 |
-
-#### PM / Infra
-
-| ID | タスク | 優先度 | 担当 |
-|----|--------|--------|------|
-| MVP-006 | README 更新 | P1 | 中村 |
-| MVP-603 | QR / デモ URL・スクショ | P1 | 中村 / 王 |
-| MVP-604 | 既知の問題 README 記載 | P1 | 中村 |
-| MVP-605 | AI_USAGE_LOG 追記 | P1 | 全員 |
-| MVP-204 | メディア本番（Infra 側） | P1 | 菅家 |
-
----
-
-### Phase 0: インフラ・基盤（MVP の前提）
-
-- [x] **MVP-001** — Supabase プロジェクト作成、環境変数（`.env` / Vercel）設定 `P0` `Infra` **担当: 菅家**
-- [x] **MVP-002** — DB スキーマ作成（§13: users, experiences, reservations, experience_logs, curiosity_map_items, point_transactions） `P0` `BE` **担当: 阿部**
-- [x] **MVP-003** — RLS ポリシー草案（読み取り公開、書き込みは本人 or Edge Function 経由） `P0` `BE` **担当: 阿部**
-- [x] **MVP-004** — シードデータ投入（体験会 5 件以上、デモユーザー） `P1` `BE` **担当: 阿部**
-- [x] **MVP-005** — Vercel プロジェクト連携、`npm run build`、main 自動デプロイ `P0` `Infra` **担当: 菅家**
-- [x] **MVP-007** — Cloudflare アカウント設定・R2 バケット作成・CDN 有効化 `P0` `Infra` **担当: 菅家**
-- [x] **MVP-008** — Cloudflare Stream 有効化・アップロード用 API トークン発行 `P0` `Infra` **担当: 菅家**
-- [ ] **MVP-006** — README 更新（デモ URL・技術スタック・既知の問題）※ plan 外ファイルだが提出必須 `P1` `PM` **担当: 中村**
-- [ ] **MVP-009** — Edge Functions 本番デプロイ & Secrets 設定（`reserve-experience` / `upload-media` の `SUPABASE_SERVICE_ROLE_KEY`、Cloudflare 各種トークン） `P0` `Infra / BE` **担当: 菅家**
-- [x] **MVP-606** — GitHub Actions CI（PR / main で `frontend` の `npm run build`） `P2` `Infra` **担当: 菅家**
-
----
-
-### Phase 1: 認証・ユーザー（MVP）
-
-- [x] **MVP-101** — Supabase Auth 導入（匿名ログイン or メールなしデモ用 1 アカウント） `P1` `BE` **担当: 阿部**
-- [x] **MVP-102** — `users` 行の作成・取得（プロフィール: name, avatar, points, title） `P1` `BE / FE` **担当: 阿部 / 柴沼**
-- [x] **MVP-103** — フロント: `dummyData.initialUser` を API 取得に置き換え `P1` `FE` **担当: 柴沼**
-- [ ] **MVP-104** — プロフィール表示フィールドの DB 整合（`avatar` / `nextTitlePoints` / `joinedCount` — 現状 UI が `dummyData` 前提のフィールドを参照） `P1` `FE / BE` **担当: 菅家 / 柴沼**
-
----
-
-### Phase 2: 体験会・フィード（MVP Must）
-
-- [x] **MVP-201** — `experiences` CRUD API（一覧・詳細。作成は認証ユーザー） `P0` `BE` **担当: 阿部**
-- [ ] **MVP-202** — 体験に `category`（好奇心クラスタ）と `nicheScore` を付与（シードは設定済み、投稿時は未設定） `P1` `BE` **担当: 菅家**
-- [x] **MVP-203** — Home: `experiences` を Supabase から取得してフィード表示 `P0` `FE` **担当: 柴沼**
-- [ ] **MVP-204** — メディアアップロード: 画像 R2 / 動画 Stream + `mediaUrl` フィード表示（Function・PostScreen・ExperienceCard 実装済み。本番デプロイ・シード `media_url`・エラー UX 要確認） `P1` `FE / Infra` **担当: 菅家 / 柴沼**
-- [x] **MVP-205** — 投稿画面: フォーム送信 → DB insert → Home 先頭表示 `P0` `FE` **担当: 柴沼**
-- [ ] **MVP-206** — 投稿時 `pointReward` 算出（ニッチ度 or デフォルト 100） `P2` `BE` **担当: 菅家**
-- [ ] **MVP-207** — 投稿フォームの DB 未保存項目整理（`duration` / 初心者歓迎 / 友達 OK — スキーマ追加 or UI 限定の明示） `P3` `BE / FE` **担当: 菅家 / 柴沼**
-- [ ] **MVP-209** — PostScreen: メディアアップロード失敗時の通知（現状 `null` のまま投稿続行） `P2` `FE` **担当: 柴沼**
-
-**現状ですでにできていること（追加実装不要）**
-
-- [x] 縦スナップ UI、`ExperienceCard` / `ExperienceModal` のインタラクション
-- [x] モーダル内予約完了 UI
-
----
-
-### Phase 3: 予約（MVP Must）
-
-- [x] **MVP-301** — Edge Function `reserve-experience`（定員チェック、`reserved_count` 更新、reservation insert） `P0` `BE` **担当: 阿部**
-- [x] **MVP-302** — フロント: `handleReserve` を Function 呼び出しに変更 `P0` `FE` **担当: 柴沼**
-- [x] **MVP-303** — 二重予約防止（同一 user + experience） `P1` `BE` **担当: 阿部**
-- [x] **MVP-304** — プロフィール「予約中」タブを DB の `status=reserved` で表示 `P1` `FE` **担当: 柴沼**
-
-**現状ギャップ**
-
-- [x] 予約の DB 永続化（`fetchReservations` + Edge Function）
-- [ ] 参加後ログのローカル state 残存（`initialLogs` / `handleSaveLog`）
-- [ ] 予約成功後の `experiences.reserved_count` フロント再同期
-
-- [ ] **MVP-305** — 予約成功後に `fetchExperiences` で定員表示を更新 `P2` `FE` **担当: 柴沼**
-
----
-
-### Phase 4: 参加後ログ・ポイント・好奇心マップ（MVP Must / Should）
-
-- [ ] **MVP-401** — Edge Function `submit-experience-log`（ログ保存、pt 加算、マップ更新、reservation→joined） `P0` `BE` **担当: 阿部**
-- [ ] **MVP-402** — ポイントルール実装（最低限: ログ +30、体験 `pointReward`、新ジャンル +150 は簡易判定） `P1` `BE` **担当: 阿部**
-- [ ] **MVP-403** — `point_transactions` 記録とプロフィール総 pt 同期 `P1` `BE` **担当: 菅家**
-- [ ] **MVP-404** — `curiosity_map_items` の upsert（genre + category、level / experience_count） `P0` `BE` **担当: 阿部**
-- [ ] **MVP-405** — フロント: ログ保存後の完了画面を**実際の更新結果**で表示（ハードコード削除） `P1` `FE` **担当: 柴沼 / 王**
-- [ ] **MVP-406** — プロフィール好奇心マップタブを DB 連携 `P0` `FE` **担当: 柴沼 / 王**
-- [ ] **MVP-410** — フロント: `handleSaveLog` を `submit-experience-log` 呼び出しに変更（ローカル `initialLogs` 廃止） `P0` `FE` **担当: 柴沼**
-- [ ] **MVP-407** — 称号: pt 閾値テーブル + `users.title` 更新 `P2` `BE / FE` **担当: 阿部 / 柴沼**
-- [ ] **MVP-408** — 参加数・初体験ジャンル数の集計表示 `P2` `FE` **担当: 柴沼**
-- [ ] **MVP-411** — `dummyData.js` 整理（未使用 `experiences` 削除、DB 移行済み定数の分離） `P2` `FE` **担当: 柴沼**
-
-**現状ギャップ**
-
-- [ ] `LogScreen` 完了メッセージの動的化（現状常に「陶芸 Lv.1」）
-- [ ] `curiosityMap` の `dummyData` 固定解除
-
----
-
-### Phase 5: プロフィール・交換 UI（MVP Should）
-
-- [ ] **MVP-501** — 参加済みログ一覧を `experience_logs` から取得 `P1` `FE` **担当: 柴沼**
-- [ ] **MVP-502** — ログカードに `againRating` 表示（現状 `funRating` のみ Stars） `P2` `FE` **担当: 柴沼**
-- [ ] **MVP-503** — 交換タブ: 「実交換不可」の注記を設計書通り明確化（500pt 等はイメージ） `P2` `FE / Design` **担当: 王**
-
-**現状ですでにできていること**
-
-- [x] タブ UI、pt・称号・進捗バー、交換リストの見た目
-
----
-
-### Phase 6: デモ品質・審査向け（MVP）
-
-- [ ] **MVP-601** — モバイル Web 表示調整（`device-frame`、safe-area、実機 Safari 確認） `P1` `FE` ← DES-009 と連携 **担当: 柴沼 / 王**
-- [ ] **MVP-602** — ローディング・エラー UI（予約失敗、定員満了 — 現状 `alert` のみ） `P1` `FE` ← DES-008 と連携 **担当: 柴沼 / 王**
-- [ ] **MVP-603** — QR コード用デモ URL 固定・スクリーンショット撮影 `P1` `PM` ← DES-010 と連携 **担当: 中村 / 王**
-- [ ] **MVP-604** — 既知の問題 / 未実装を README に記載 `P1` `PM` **担当: 中村**
-- [ ] **MVP-605** — AI_USAGE_LOG 追記（開発節目ごと） `P1` `全員` **担当: 全員**
-
----
-
-### Phase 7: デザイン（UI/UX 仕上げ）
-
-> **原則**: 機能が動く画面は先に BE/FE で配線し、見た目は DES タスクで後から polish する。  
-> ただし **DES-001（トークン）は最初**にやると、以降の修正コストが下がる。
-
-- [ ] **DES-001** — デザイントークン整備（`tokens.js` ↔ `tailwind.config.js` 統一、カラー・フォント・spacing） `P1` `Design` **担当: 王**
-- [ ] **DES-002** — Home / `ExperienceCard` polish（CTA・右レール・グラデ fallback・タップフィードバック） `P1` `Design / FE` **担当: 王 / 柴沼**
-- [ ] **DES-003** — `ExperienceModal` polish（ボトムシート・予約完了状態・定員表示） `P1` `Design / FE` **担当: 王 / 柴沼**
-- [ ] **DES-004** — プロフィール polish（pt バー・称号・タブ・空状態） `P2` `Design / FE` ※ MVP-104 後 **担当: 王**
-- [ ] **DES-005** — 好奇心マップ可視化（Lv ドット・カテゴリ一覧・アニメーション） `P1` `Design / FE` ※ MVP-406 後 **担当: 王 / 柴沼**
-- [ ] **DES-006** — `LogScreen` polish（入力フォーム・+pt 演出・完了画面の動的レイアウト） `P1` `Design / FE` ※ MVP-405/410 後 **担当: 王 / 柴沼**
-- [ ] **DES-007** — `PostScreen` polish（カバーアップロード UI・フォーム余白・完了画面） `P2` `Design / FE` **担当: 王**
-- [ ] **DES-008** — ローディング・エラー・空状態コンポーネント（`alert` 置き換え） `P1` `Design / FE` ※ MVP-602 と同時 **担当: 王 / 柴沼**
-- [ ] **DES-009** — モバイル実機調整（safe-area、`100dvh`、タップ領域 44px 以上） `P1` `Design / FE` ※ MVP-601 と同時 **担当: 王 / 柴沼**
-- [ ] **DES-010** — デモ用スクリーンショット・README 素材（Home / ログ完了 / マップ） `P1` `Design / PM` ※ Day 3 提出前 **担当: 王 / 中村**
-
-**対象ファイル早見**
-
-| 画面 | 主ファイル |
-|------|-----------|
-| トークン | `frontend/src/styles/tokens.js`, `frontend/tailwind.config.js`, `frontend/src/index.css` |
-| Home | `HomeScreen.jsx`, `ExperienceCard.jsx`, `ExperienceModal.jsx` |
-| プロフィール | `ProfileScreen.jsx` |
-| ログ | `LogScreen.jsx`, `PointBurst.jsx` |
-| 投稿 | `PostScreen.jsx` |
-| 共通 | `Button.jsx`, `Badge.jsx`, `BottomTabBar.jsx` |
-
----
-
-## 5. MVP 以降（Post-MVP）
-
-### 5.1 プロダクト機能拡張
-
-- [ ] **POST-001** — 体験会動画アップロード・再生 `P3` — MVP-204 で基盤実装済み。本番検証・UX 磨きが残タスク
-- [ ] **POST-002** — 保存（ブックマーク）の永続化 `P3` — saved_experiences テーブル
-- [ ] **POST-003** — Following フィード `P3` — フォロー関係 + フィルタ
-- [ ] **POST-004** — Random Box `P3` — 設計書 Could
-- [ ] **POST-005** — 予約キャンセル `P3` — status `cancelled`
-- [ ] **POST-006** — 参加ステータス手動／QR チェックイン `P3` — 運用フロー次第
-- [ ] **POST-007** — レビュー・通報・本人確認 `P3` — §17 リスク4 対策
-- [ ] **POST-008** — 通知（予約リマインド） `P3` — Push / メール
-- [ ] **POST-009** — ランキング・レコメンド `P3` — MVP 外
-- [ ] **POST-010** — 実決済（Stripe 等） `P3` — 手数料モデル §16
-- [ ] **POST-011** — 商品券実交換 `P3` — ポイント消費
-- [ ] **POST-012** — AI 翻訳説明文 `P3` — MVP 外
-- [ ] **POST-013** — クリエイター向け分析ダッシュボード `P3` — サブスク構想 §16
-
-### 5.2 技術・インフラ
-
-- [ ] **POST-101** — React Native / Expo への移行 or 共有ロジック化 `P3` — 設計書準拠のネイティブ体験
-- [ ] **POST-102** — 分析イベント送信（§15 KPI） `P2` — Modal Open / Reserve / Log 等
-- [x] **POST-103** — Preview Deploy（PR ごと） `P2` — Vercel
-- [ ] **POST-104** — AWS / Cloudflare 検討 `P3` — 大規模配信時
-
----
-
-## 6. 実装優先順位（推奨スプリント）
-
-### 6.0 全体の進め方（FE / BE / Design の順序）
-
-```
-【今すぐ ─ 並行 OK】
-  菅家:  MVP-009（Functions デプロイ）→ 403, 104 BE, 202, 206
-  阿部:  MVP-401 → 402 → 404（ログ・pt・マップの核）
-  王:    DES-001（トークン）→ DES-002, DES-003, DES-007
-  柴沼:  MVP-305, 602, 601, 209（401 待ち時間）
-
-【401 完了後 ─ 柴沼・王が着手】
-  柴沼:  MVP-410 → MVP-406 → MVP-405 → MVP-501
-  王:    DES-005, DES-006（柴沼とペア）
-
-【Day 3 前 ─ 全員】
-  柴沼+王: MVP-601/602 + DES-008/009
-  中村+王: MVP-603 + DES-010 + MVP-006, 604
-  全員:   MVP-605
+## 1. アーキテクチャ
+
+```mermaid
+flowchart TB
+  subgraph client [Frontend - Vite + React]
+    Onboard[クローン作成]
+    World[3Dホーム - index.html移植]
+    Topic[今日のTopic]
+    Chat[クローンチャット]
+    Map[興味マップ / ノート / タイムライン]
+  end
+
+  subgraph supabase [Supabase]
+    Auth[Auth 匿名/メール]
+    DB[(PostgreSQL)]
+    RT[Realtime - タイムライン/位置]
+    EF[Edge Functions]
+  end
+
+  subgraph ai [AI Layer]
+    Agent[クローン自律シミュレーション]
+    TopicGen[1日1Topic生成]
+    ChatLLM[深掘りチャット]
+    Encounter[クローン間会話生成]
+  end
+
+  Onboard --> DB
+  World --> RT
+  World --> DB
+  EF --> Agent
+  EF --> TopicGen
+  EF --> ChatLLM
+  EF --> Encounter
+  Agent --> DB
+  Chat --> EF
 ```
 
-| フェーズ | 菅家 / 阿部 | 柴沼 / 王 | 中村 |
-|----------|-------------|-----------|------|
-| **Phase A**（今） | 009 → 401〜404（阿部）/ 403, 104 BE（菅家） | DES-001〜003（王）/ 305, 602（柴沼） | 進捗管理 |
-| **Phase B**（ログ核完成後） | 402〜404 仕上げ、206, 202（菅家） | 410 → 406 → 405 → 501（柴沼）/ DES-005, 006（王） | レビュー |
-| **Phase C**（デモ前日） | 407, 204 Infra（菅家/阿部） | 601, 602, 411（柴沼）/ DES-008〜010（王） | 603, 604, 605 |
-| **Phase D**（提出直前） | バグ修正サポート | 最終 polish + スクショ | 提出物確定 |
+### 1.1 技術スタック（確定案）
 
-> **デザインを先にやりすぎない理由**: LogScreen 完了画面（DES-006）や好奇心マップ（DES-005）は、BE/FE で**実データが入ってから**調整しないと手戻りが大きい。  
-> **DES-001 だけは例外** — トークンを先に固めると DES-002 以降が楽になる。
+| 層 | 選定 | 備考 |
+|----|------|------|
+| フロント | React 18 + Vite + Tailwind（既存） | 3D は `@react-three/fiber` + `three@0.128` **または** `index.html` の Three モジュールを `frontend/src/world/` に分割移植 |
+| 3D | Three.js r128（モックと同版） | Bloom は optional（モック同様フォールバック） |
+| バック | Supabase（Auth / DB / Realtime / Edge Functions） | 旧 Curio テーブルは非推奨・新マイグレーションで置換 |
+| AI | OpenAI API（gpt-4o-mini 等） | 審査用に `AI_USAGE_LOG.md` へ記録必須 |
+| インフラ | Vercel（FE）+ Supabase Cloud | 既存 Docker/nginx は維持可 |
 
-### Day 1（基盤 + デモ導線）
+### 1.2 画面ルーティング（MVP）
 
-- [x] MVP-001〜005（Supabase + Vercel）
-- [x] MVP-002, MVP-004（スキーマ + シード）
-- [x] MVP-201, MVP-203（フィード DB 化）
-- [x] MVP-301, MVP-302（予約 Function）
-- [ ] MVP-009（Edge Functions 本番デプロイ & Secrets）
-
-**ゴール**: デプロイ URL で「他人の体験を見て予約まで」→ **概ね達成。ログ・マップが次のブロッカー**
-
-### Day 2（価値の核）
-
-**BE**: 阿部（401〜404）/ 菅家（009, 403, 104 BE, 202）  
-**FE**: 柴沼（410 → 406 → 405 → 501）  
-**Design**: 王（DES-001 → 002, 003 → 005, 006）
-
-- [ ] MVP-401〜406, MVP-410（ログ + pt + 好奇心マップ）
-- [x] MVP-205（投稿 → フィード）
-- [x] MVP-101〜103（最低限のユーザー）
-- [ ] MVP-104（プロフィールフィールド整合）
-- [ ] MVP-601, MVP-602
-- [ ] MVP-204, MVP-209（メディア本番確認）
-- [ ] DES-005, DES-006（FE 406/405 完了後）
-
-**ゴール**: 「投稿 → 予約 → ログ → マップ成長」が審査員に説明できる
-
-### Day 3（仕上げ + 提出）
-
-**BE**: 阿部（407）/ 菅家（206, 204 Infra）  
-**FE**: 柴沼（502, 408, 411）  
-**Design**: 王（DES-008〜010, DES-004, DES-007）  
-**PM**: 中村（603〜605, 006）
-
-- [ ] MVP-407, MVP-501〜503（Should 消化）
-- [ ] MVP-603〜605（README、スクショ、AI ログ）
-- [ ] DES-008, DES-009, DES-010（エラー UI・実機・スクショ）
-- [ ] 余力: MVP-204（画像）、MVP-206、DES-004, DES-007
-
-**ゴール**: プレゼン用デモシナリオが 3 分で回る
+| パス / 画面 ID | 画面 | モック対応 |
+|----------------|------|------------|
+| `/onboarding` | クローン作成 | — |
+| `/` または `/world` | ホーム＝仮想世界ビュー | `index.html` 全体 |
+| `/topic/today` | 今日のTopic | 設計書 §14 |
+| `/chat` | クローンチャット | コマンドバー + 専用画面 |
+| `/map` | 興味マップ | 旧 curiosity_map の置換 |
+| `/notes`, `/notes/:id` | ナレッジベース | 左「ページ」ツリー |
+| `/timeline` | 履歴（右パネル拡張） | `#timeline` |
+| `/friends` | フレンド・出会い | Should |
 
 ---
 
-## 7. デモシナリオ（審査用チェックリスト）
+## 2. データモデル（Supabase）
 
-審査員に見せる最短シナリオ。MVP 完了の受け入れ条件とする。
+旧スキーマ（`experiences`, `reservations` 等）は **参照のみ**。新規マイグレーション `backend/supabase/migrations/YYYYMMDD_hochi_me_schema.sql` で追加。
 
-- [ ] QR / URL からスマホブラウザで起動
-- [ ] Home で未知の体験をスワイプ閲覧
-- [ ] 「予約する」→ モーダルで詳細確認 → 予約完了
-- [ ] プロフィールで予約中が表示される
-- [ ] 「参加後ログを書く」→ 感想・星評価 → 保存
-- [ ] +pt 表示、好奇心マップの該当ジャンルが更新
-- [ ] 投稿タブから新規体験会を作成 → Home に出現
-- [ ] リロード後も予約・ログ・pt が維持される
+### 2.1 コアテーブル
+
+| テーブル | 用途 | 主要カラム |
+|----------|------|------------|
+| `users` | 人間ユーザー | 既存流用 + `display_name` |
+| `clones` | 1ユーザー1クローン（MVP） | `user_id`, `name`, `mbti`, `archetype`, `sync_rate`, `vitals` jsonb, `appearance` jsonb |
+| `clone_profiles` | 初回入力・性格オフセット | `likes`, `recent_interests`, `bio`, `ideal_self`, `personality_shift`, `dislikes` |
+| `worlds` | 叡智の図書館 等 | `slug`, `name`, `is_default` |
+| `locations` | 中央デスク / 東の書架 等 | `world_id`, `slug`, `name`, `position` jsonb |
+| `clone_activities` | タイムライン1行 | `clone_id`, `location_id`, `activity_type`, `summary`, `metadata` jsonb, `occurred_at` |
+| `daily_topics` | 1日1Topic | `clone_id`, `topic_date`, `title`, `reason`, `source_activity_ids` uuid[] |
+| `notes` | クローン執筆ノート | `clone_id`, `parent_id`, `title`, `body`, `tags` |
+| `note_links` | バックリンク | `from_note_id`, `to_note_id` |
+| `interest_map_nodes` | 興味マップ | `clone_id`, `label`, `kind`, `depth`, `source` |
+| `clone_encounters` | 他クローンとの出会い | `clone_a_id`, `clone_b_id`, `location_id`, `dialogue` jsonb, `cross_topic` |
+| `friendships` | フレンド | `user_a_id`, `user_b_id`, `status` |
+| `chat_messages` | ユーザー↔クローン | `clone_id`, `role`, `content`, `channel` |
+| `daily_questions` | マスタ質問 | `question_key`, `text`, `sort_order` |
+| `daily_question_answers` | 回答 | `clone_id`, `question_id`, `answer`, `answered_at` |
+
+### 2.2 RLS 方針
+
+- 自分の `clone` / `notes` / `activities` / `chat` のみ CRUD
+- `clone_encounters`: 当事者クローンのオーナーのみ read
+- デモ用: シードに Sage / Echo 相当の **NPC クローン** を2体投入（モックの会話再現）
+
+### 2.3 Realtime（Should）
+
+- チャンネル `clone:{id}` — 最新 `clone_activities` 1件、`vitals`、現在 `location_id`
+- フロントの「いま」カード・ミニマップ・HUD を購読で更新
 
 ---
 
-## 8. リスクと現状の対策状況
+## 3. AI / バックエンドジョブ
 
-- [ ] **体験会供給不足** — ダミー + C2C 投稿で対策（シード 5 件 + DB 投稿対応済み）
-- [x] **参加ハードル** — 初回無料・モーダル予約（UI 実装済み）
-- [ ] **ポイント目当て参加** — マップ・ログで内発化（マップ更新が未連動）
-- [x] **C2C 安全性** — 本人確認等は MVP 外（想定通り未着手）
+| ジョブ | トリガー | 出力 |
+|--------|----------|------|
+| `simulate-clone-day` | cron 1日1回 or デモボタン | `clone_activities` 複数行 → `daily_topics` 1件 + `notes` |
+| `clone-chat` | ユーザーメッセージ | ストリーミング応答 + 必要なら `interest_map_nodes` 更新 |
+| `encounter-dialogue` | 2クローンが同ロケーション | `clone_encounters.dialogue` + `cross_topic` |
+| `apply-daily-answers` | 質問送信後 | `sync_rate`、vitals、探索バイアス更新 |
 
----
+**プロンプト設計の要点**
 
-## 9. 付録：コンポーネント ↔ 設計書画面
-
-| 設計書 | ファイル |
-|--------|----------|
-| §9.1 Home | `HomeScreen.jsx`, `ExperienceCard.jsx` |
-| §9.2 詳細モーダル | `ExperienceModal.jsx` |
-| §9.3 プロフィール | `ProfileScreen.jsx` |
-| §9.4 体験会投稿 | `PostScreen.jsx` |
-| §9.5 参加後ログ | `LogScreen.jsx` |
-| ナビゲーション | `BottomTabBar.jsx`, `App.jsx` |
+- 入力: `clone_profiles` + 直近7日 activities + 既存 interest_map
+- 性格シフト（反転型等）: ロケーション重みを JSON で渡す（設計書 §9）
+- Topic 理由: 行動経路を必ず含める（設計書 §14 の例文構造）
 
 ---
 
-## 10. 変更履歴
+## 4. フェーズとスケジュール（3日間想定）
+
+| Day | ゴール | デモで見せるもの |
+|-----|--------|------------------|
+| **Day 1** | モック移植 + クローン作成 + DB 新規 | `index.html` 相当の 3D が React で動く。オンボーディング完了で Mira 表示 |
+| **Day 2** | Must のデータ連携 + Topic + チャット + タイムライン | 今日のTopic・理由・関連ノートが DB/AI から出る。質問1セット回答で同期率変化 |
+| **Day 3** | Should 一部 + 仕上げ + デプロイ | 他クローン吹き出し、フレンド一覧、発表用シナリオ通し |
+
+---
+
+## 5. タスク一覧
+
+タスク ID は **`HO-xxx`**（放置me）。着手前に [rule.md](./rule.md) の担当宣言・ブランチ命名に従う。
+
+凡例: `[Must]` / `[Should]` / `[Could]` — 設計書 §19
+
+### Phase A — 基盤・モック移植（Day 1 AM）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-001 | — | README / チーム情報を放置me に更新 | `README.md` | PM |
+| HO-002 | — | デザイントークンを Tailwind + CSS 変数化 | `frontend/src/styles/tokens.js`, `index.css` | FE |
+| HO-003 | Must | `index.html` のレイアウトを React シェルに移植（3D除く） | `WorldLayout.jsx`, 各パネルコンポーネント | FE |
+| HO-004 | Must | Three.js シーンを `frontend/src/world/` にモジュール分割 | `LibraryScene.jsx`, `avatars.js`, `waypoints.js` | FE |
+| HO-005 | Must | ローダー・CDN フォールバック・Bloom 任意読込（モック同等） | モック `__mira` パターン踏襲 | FE |
+| HO-006 | — | `three`, `@react-three/fiber`, `@react-three/drei` 依存追加 | `package.json` | FE / Infra |
+
+### Phase B — クローン作成・DB（Day 1 PM）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-101 | Must | 新スキーママイグレーション + RLS | `migrations/*_hochi_me_schema.sql` | BE |
+| HO-102 | Must | シード: 叡智の図書館、4ロケーション、NPC Sage/Echo | `seed.sql` | BE |
+| HO-103 | Must | クローン作成画面（設計書 §7, §8） | `OnboardingScreen.jsx` | FE |
+| HO-104 | Must | 作成 API: `clones` + `clone_profiles` insert | Supabase client or EF | BE |
+| HO-105 | Must | 未作成時は `/onboarding` へリダイレクト | `App.jsx` ルーティング | FE |
+
+### Phase C — 3D ホーム・ライブ UI（Day 1–2）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-201 | Must | 自分のクローンのみ巡回（ウェイポイント → HUD 連動） | モック `updateUIForWaypoint` 相当 | FE |
+| HO-202 | Should | カメラ4モード切替 | `#cam-follow` 等 | FE |
+| HO-203 | Should | ミニマップ（全クローン位置・発話者パルス） | `#minimap` | FE |
+| HO-204 | Must | 左: クローンカード・バイタル・同期率表示 | DB `clones.vitals`, `sync_rate` | FE |
+| HO-205 | Must | 右: 「いま」— 現在 activity を表示 | `clone_activities` 最新1件 | FE |
+| HO-206 | Must | 右: 今日のタイムライン一覧 | 当日 `clone_activities` | FE |
+| HO-207 | Must | 下部コマンドバー UI（送信は Phase E で接続） | `CommandBar.jsx` | FE |
+| HO-208 | Should | 他クローン2体 + 吹き出し会話（シード or 固定スクリプト） | モック `conversation[]` | FE |
+
+### Phase D — 今日のTopic・興味マップ・ノート（Day 2）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-301 | Must | Edge Function `simulate-clone-day`（デモ: 即時生成ボタン可） | `functions/simulate-clone-day/` | BE |
+| HO-302 | Must | 今日のTopic画面（タイトル・理由・関連ノート3） | `TopicScreen.jsx` | FE |
+| HO-303 | Must | フィードバック UI: 気になる / 違う / もっと知りたい | `daily_topics` or `topic_feedback` | FE |
+| HO-304 | Must | 興味マップ画面（種別・深さ・未解放） | `InterestMapScreen.jsx` | FE |
+| HO-305 | Must | ノート一覧 + 詳細（Notion風簡易 Markdown） | `NotesScreen.jsx` | FE |
+| HO-306 | Must | ページツリー ↔ `notes.parent_id` | 左サイドバー連動 | FE |
+| HO-307 | Should | ナレッジベース / AIメモリーボールト / 目標の区分 | `notes.kind` 列追加 | BE |
+
+### Phase E — チャット・毎日の質問・同期率（Day 2–3）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-401 | Must | Edge Function `clone-chat`（ストリーミング推奨） | OpenAI + `chat_messages` | BE |
+| HO-402 | Must | クローンチャット画面 + クイック質問チップ | `ChatScreen.jsx` | FE |
+| HO-403 | Must | コマンドバー → チャット or 指示パース（「西の書架へ」） | 簡易 intent → activity 予約 | FE / BE |
+| HO-404 | Must | 毎日の質問マスタ + 回答 UI（5–6問） | `DailyQuestions.jsx` | FE |
+| HO-405 | Must | 回答反映: `sync_rate` / vitals / 探索重み更新 | `apply-daily-answers` EF | BE |
+| HO-406 | Could | 音声入力（Web Speech API） | チャット画面 | FE |
+
+### Phase F — タイムライン・フレンド・ユーザー会話（Day 3）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-501 | Must | タイムライン画面（日別・過去遡り） | `TimelineScreen.jsx` | FE |
+| HO-502 | Should | 出会ったクローン一覧 + 共通Topic | `FriendsScreen.jsx` | FE |
+| HO-503 | Should | 「この人と話してみますか？」→ ユーザー間チャット | `user_chats` テーブル検討 | BE / FE |
+| HO-504 | Should | フレンド追加・招待 | `friendships` | BE |
+| HO-505 | Should | 性格シフト再設定 | オンボーディング編集モード | FE |
+| HO-506 | Should | 行動タイプ（深掘り/拡散/社交/反転）→ ロケーション重み | `clone_profiles.exploration_mode` | BE |
+
+### Phase G — インフラ・デモ・提出（Day 3）
+
+| ID | 優先 | タスク | 成果物 | 担当目安 |
+|----|------|--------|--------|----------|
+| HO-601 | — | Vercel デプロイ + 環境変数 | README デモ URL | Infra |
+| HO-602 | — | 発表用シナリオ doc（3分） | `project-docs/demo-script.md` | PM |
+| HO-603 | — | スクリーンショット 2枚 | `docs/screenshot-*.png` | 全員 |
+| HO-604 | Could | バッジ・ランキング（ローカル表示のみ可） | ゲーミフィケーション §18 | FE |
+| HO-605 | Could | 複数ワールド切替 UI（データは1ワールドのみでも可） | 左ナビ | FE |
+
+---
+
+## 6. フロントコンポーネント構成（目標ツリー）
+
+```
+frontend/src/
+├── App.jsx                 # ルート・認証・クローン有無判定
+├── styles/
+│   ├── tokens.js           # HO-002: モック CSS 変数
+│   └── world.css           # glass / grid / timeline 等
+├── screens/
+│   ├── OnboardingScreen.jsx
+│   ├── WorldScreen.jsx     # HO-003–207: ホーム（3D+オーバーレイ）
+│   ├── TopicScreen.jsx
+│   ├── ChatScreen.jsx
+│   ├── InterestMapScreen.jsx
+│   ├── NotesScreen.jsx
+│   └── TimelineScreen.jsx
+├── components/world/
+│   ├── WorldLayout.jsx     # topbar / sidebar / right / command
+│   ├── CloneCard.jsx
+│   ├── VitalsBar.jsx
+│   ├── NowCard.jsx
+│   ├── ActivityTimeline.jsx
+│   ├── CommandBar.jsx
+│   └── CameraControls.jsx
+└── world/                  # Three.js（index.html から移植）
+    ├── LibraryScene.jsx
+    ├── buildAvatar.js
+    ├── waypoints.js
+    └── minimap.js
+```
+
+---
+
+## 7. デザイン仕様（モック準拠）
+
+| トークン | 値 | 用途 |
+|----------|-----|------|
+| `--bg-0` | `#03040f` | 背景 |
+| `--neon-cyan` | `#4ff5e7` | Mira アクセント |
+| `--neon-violet` | `#a378ff` | ブランド |
+| `--neon-pink` | `#ff6ec7` | Sage |
+| `--neon-green` | `#74ffa8` | Echo |
+| フォント | Inter + Noto Sans JP + JetBrains Mono | HUD・時刻 |
+
+**アバター（Mira デフォルト）**: 紫×シアン、フード型、胸コア発光 — `PALETTES.mira` in `index.html`
+
+**ロケーション slug（MVP）**
+
+| slug | 表示名 | モック上のウェイポイント |
+|------|--------|-------------------------|
+| `central-desk` | 中央デスク | wp index 0, 5 |
+| `east-shelf` | 東の書架 | wp index 1 |
+| `skylight` | 天窓 / 観測所 | wp index 2 |
+| `west-shelf` | 西の書架 | wp index 3 |
+| `assembly` | 集会場 | 会話シーン（NPC 配置） |
+
+---
+
+## 8. 発表デモシナリオ（3分・推奨）
+
+1. **オンボーディング** — ミサキ想定で Mira 作成、「少し外向的」選択  
+2. **ホーム** — 3D で Mira が書架→デスクを巡回。Sage と吹き出し交差  
+3. **今日のTopic** — 「カフェ巡り × フィルムカメラ」+ 理由（行動経路つき）  
+4. **チャット** — 「なぜ興味を持ったの？」→ クローンが自分との関係を説明  
+5. **毎日の質問** — 2問回答 → 同期率 99.6% → 99.8% など視覚的変化  
+6. **タイムライン** — 「放置していた間にこう動いていた」一覧  
+7. **クロージング** — コピー「あなたのクローンが、知らない自分を見つけてくる。」
+
+---
+
+## 9. リスクとカットライン
+
+| リスク | 対策 | カット時 |
+|--------|------|----------|
+| Three.js 移植が重い | Day1 は `index.html` を iframe 埋め込みでも可 | 後から React 統合 |
+| AI コスト / 遅延 | デモはシード JSON + 1回だけ LLM | 全ストリーミング |
+| リアルタイム複雑 | ポーリング 5s で代替 | Realtime |
+| 旧 Curio コード混在 | `frontend/src/screens/*` を段階削除 | ビルド通過優先 |
+| ユーザー間マッチング | フレンドはデモ2アカウント固定 | HO-503 |
+
+**Day3 最低ライン（Must のみ）**: HO-103,104,201,204–206,301–306,401–405,501 + モック級の 3D（HO-004）
+
+---
+
+## 10. 進捗チェック（手動更新）
+
+> **次に着手するタスクの一覧は §0.4 を参照。**
+
+### Phase A — Milestone A（デモ実装）
+- [x] HO-001（README・プロダクト名の一部）
+- [x] HO-002
+- [ ] HO-003（`WorldScreen` 単体のまま — コンポーネント分割は未）
+- [ ] HO-004（`initLibraryScene.js` 単一ファイル — 分割は未）
+- [x] HO-005（Bloom オフ・フォールバックで運用）
+- [x] HO-006（`three@0.128.0` のみ。R3F は未導入）
+
+### Phase B — **← ここから優先**
+- [ ] HO-101
+- [ ] HO-102
+- [x] HO-103（簡易版 `OnboardingModal` — 設計書フル項目は未）
+- [ ] HO-104
+- [x] HO-105（LocalStorage 版）
+
+### Phase C
+- [x] HO-201
+- [x] HO-202
+- [x] HO-203
+- [x] HO-204（表示のみ・DB 未連携）
+- [ ] HO-205（ダミー / 3D コールバックのみ）
+- [ ] HO-206（初期ダミー固定）
+- [x] HO-207（UI のみ・送信未接続）
+- [x] HO-208
+
+### Phase D
+- [ ] HO-301
+- [ ] HO-302
+- [ ] HO-303
+- [ ] HO-304
+- [ ] HO-305
+- [ ] HO-306
+- [ ] HO-307
+
+### Phase E
+- [ ] HO-401
+- [ ] HO-402
+- [ ] HO-403
+- [ ] HO-404
+- [ ] HO-405
+- [ ] HO-406
+
+### Phase F
+- [ ] HO-501
+- [ ] HO-502
+- [ ] HO-503
+- [ ] HO-504
+- [ ] HO-505
+- [ ] HO-506
+
+### Phase G
+- [x] HO-601（`vercel.json`・ローカル build — **Production URL 記載は未**）
+- [ ] HO-602
+- [ ] HO-603
+- [ ] HO-604
+- [ ] HO-605
+
+---
+
+## 11. 関連ドキュメント
+
+| ファイル | 用途 |
+|----------|------|
+| [rule.md](./rule.md) | ブランチ・PR・担当宣言 |
+| [AI_USAGE_LOG.md](./AI_USAGE_LOG.md) | 審査用 AI 記録 |
+| [../index.html](../index.html) | UI/3D モック（正） |
+| [../README.md](../README.md) | セットアップ・提出 |
+
+---
+
+## 12. 変更履歴
 
 | 日付 | 内容 |
 |------|------|
-| 2026-05-24 | 初版作成（現行コードベース調査 + 設計書照合） |
-| 2026-05-24 | タスク・追跡項目をチェックボックス形式に統一 |
-| 2026-05-24 | コードベース再調査: 予約 DB 化・Auth・メディア基盤を反映。MVP-009/104/209/305/410/411/606 を追加 |
-| 2026-05-24 | 担当別早見表（§4.0〜4.1）、Phase 7 デザインタスク（DES-001〜010）、FE/BE/Design 並行順序（§6.0）を追加 |
-| 2026-05-24 | 全タスクに担当者名を追加（中村=PM、菅家=Infra/BE、阿部=BE、柴沼=FE、王=Design/FE） |
+| 2026-05-25 | 初版 — 放置me プロダクト設計書・index.html モックに基づく実装プラン |
+| 2026-05-25 | Milestone A 完了を反映。§0.3 現在地・§0.4 ここから取り組むタスクを追加 |

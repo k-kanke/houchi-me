@@ -1,6 +1,204 @@
+@import './styles/world.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* 放置me オーバーレイ・オンボーディング */
+.hochi-loader.hide {
+  opacity: 0;
+  visibility: hidden;
+}
+
+.hochi-topic-btn {
+  margin-top: auto;
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(79, 245, 231, 0.4);
+  background: rgba(79, 245, 231, 0.12);
+  color: var(--neon-cyan);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.hochi-topic-btn:hover {
+  background: rgba(79, 245, 231, 0.22);
+}
+
+.hochi-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(3, 4, 15, 0.75);
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.hochi-overlay-panel {
+  position: relative;
+  max-width: 480px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 28px;
+  border-radius: 16px;
+  border: 1px solid var(--border-strong);
+  background: rgba(7, 9, 30, 0.95);
+  color: var(--text-1);
+}
+
+.hochi-overlay-panel h2 {
+  font-size: 18px;
+  color: var(--text-0);
+  margin-bottom: 12px;
+}
+
+.hochi-overlay-panel h3 {
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text-3);
+  margin: 16px 0 8px;
+}
+
+.hochi-overlay-close {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  background: none;
+  border: none;
+  color: var(--text-2);
+  font-size: 24px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.hochi-topic-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--neon-cyan);
+  margin-bottom: 8px;
+}
+
+.hochi-feedback {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.hochi-feedback button {
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-1);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.hochi-chat-input {
+  width: 100%;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-0);
+  font-size: 14px;
+}
+
+.hochi-chat-msg.clone {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(163, 120, 255, 0.12);
+  border: 1px solid rgba(163, 120, 255, 0.25);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.hochi-onboard {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: radial-gradient(ellipse at center, #0a0c2e 0%, #03040f 100%);
+}
+
+.hochi-onboard-panel {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 28px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(7, 9, 30, 0.9);
+  color: #d8dbf2;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hochi-onboard-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: conic-gradient(from 220deg, #a378ff, #4ff5e7, #ff6ec7, #a378ff);
+  margin: 0 auto 8px;
+}
+
+.hochi-onboard-panel h1 {
+  text-align: center;
+  font-size: 24px;
+  color: #fff;
+}
+
+.hochi-onboard-tagline {
+  text-align: center;
+  font-size: 13px;
+  color: #8f93b8;
+  margin-bottom: 8px;
+}
+
+.hochi-onboard-panel label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #5b5f86;
+}
+
+.hochi-onboard-panel input,
+.hochi-onboard-panel textarea,
+.hochi-onboard-panel select {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #fff;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.hochi-onboard-submit {
+  margin-top: 8px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 1px solid rgba(79, 245, 231, 0.5);
+  background: rgba(79, 245, 231, 0.15);
+  color: #4ff5e7;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+.hochi-onboard-submit:hover {
+  background: rgba(79, 245, 231, 0.28);
+}
 
 :root {
   --bg-primary: #0A0A0A;

@@ -1,5 +1,5 @@
 {
-  "name": "curio-meet-mock",
+  "name": "hochi-me",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -12,7 +12,8 @@
     "@supabase/supabase-js": "^2.106.1",
     "framer-motion": "^11.3.19",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1"
+    "react-dom": "^18.3.1",
+    "three": "0.128.0"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.3.1",

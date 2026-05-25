@@ -480,6 +480,25 @@
 - **評価**：採用
 - **採用 / 不採用の理由**：複数の不具合が段階的に重なっていたため、AI にログ読みとコード修正をまたがって進めさせることで、Next.js 設定・FE 保存・Edge Function・UI 導線の 4 層を短時間で切り分けできた。結果として、デモに必要な Topic 生成とクローンチャットの本番経路に近い確認が進められたため採用。
 
+### #016 CI 再構成（frontend / Next.js 向け）
+
+- **時刻**：23:55
+- **ツール**：Codex
+- **目的**：現在の `frontend/` が Next.js 16 単体アプリに整理された状態に合わせて、GitHub Actions の CI を `frontend` 変更時のみ発火する build-first 構成へ作り直す。
+- **プロンプト**：
+  ```
+  ci作り直して
+  ```
+- **出力サマリ**：
+  - `.github/workflows/ci.yml` を再構成し、`workflow_dispatch` を追加した。
+  - `pull_request` / `push` の両方で、`.github/workflows/ci.yml` と `frontend/**` の変更時のみ走るよう `paths` を設定した。
+  - ジョブを `frontend-build` 1 本に整理し、`frontend/` を working directory に固定した。
+  - `actions/setup-node@v4` + Node 20 + `frontend/package-lock.json` を使った npm キャッシュに統一した。
+  - CI の実行内容を `npm ci` → `npm ls --depth=0` → `npm run build` に整理し、Next.js アプリのビルド成立を主目的にした。
+  - `NEXT_PUBLIC_SUPABASE_*` は Secret 未設定でもダミー値で build が止まらないようにした。
+- **評価**：採用
+- **採用 / 不採用の理由**：現状のコードベースには lint の既存課題が残っているため、まずはデモと PR レビューで必要な「frontend の install/build が壊れていないこと」を安定して判定する CI に寄せた。Next.js / `frontend/` 起点の実態に合う構成へ整理できたため採用。
+
 ---
 
 ## Day 3（2026-05-26）

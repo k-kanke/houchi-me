@@ -1,7 +1,11 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
+    paths:
+      - ".github/workflows/ci.yml"
+      - "frontend/**"
   push:
     branches:
       - main
@@ -13,20 +17,26 @@ on:
       - test/**
       - build/**
       - chore/**
+    paths:
+      - ".github/workflows/ci.yml"
+      - "frontend/**"
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
+  frontend-build:
+    name: Frontend Build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     defaults:
       run:
         working-directory: frontend
     env:
-      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' && secrets.NEXT_PUBLIC_SUPABASE_URL || 'https://example.supabase.co' }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY != '' && secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'dummy-anon-key' }}
+      CI: true
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -41,5 +51,17 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Build
+      - name: Verify lockfile is up to date
+        run: npm ls --depth=0
+
+      - name: Build Next.js app
         run: npm run build
+
+      - name: Job summary
+        run: |
+          {
+            echo "## CI Summary"
+            echo "- App: frontend (Next.js)"
+            echo "- Node.js: 20"
+            echo "- Checks: npm ci, npm ls --depth=0, npm run build"
+          } >> "$GITHUB_STEP_SUMMARY"

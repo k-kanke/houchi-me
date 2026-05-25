@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import ThirdPersonZoomGesture from '@/components/main/ThirdPersonZoomGesture';
 import TopBar from './TopBar';
-import WorldHudMenu from '@/components/main/WorldHudMenu';
+import WorldHudMenu, { WorldHudMenuDock } from '@/components/main/WorldHudMenu';
 import TalkButton from '@/components/main/TalkButton';
 import ConversationModule from '@/components/main/ConversationModule';
 import { useAppStore } from '@/lib/store';
@@ -57,28 +57,33 @@ export default function AppShell() {
     <div className="relative z-10 flex h-screen min-h-0">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <TopBar />
-        <main
-          ref={worldViewportRef}
-          className="relative min-h-0 flex-1 overflow-hidden"
-          data-world-viewport
-        >
-          <ThirdPersonZoomGesture viewportRef={worldViewportRef} />
-          <div className="absolute inset-0 z-0">
-            <VirtualWorld />
+        <div className="flex min-h-0 flex-1 flex-col lg:block">
+          <main
+            ref={worldViewportRef}
+            className="relative h-[60%] min-h-0 shrink-0 overflow-hidden lg:h-auto lg:flex-1"
+            data-world-viewport
+          >
+            <ThirdPersonZoomGesture viewportRef={worldViewportRef} />
+            <div className="absolute inset-0 z-0">
+              <VirtualWorld />
+            </div>
+            <div className="pointer-events-none absolute inset-0 z-10">
+              <WorldHudMenu />
+              <div className="absolute bottom-2 left-1/2 max-w-[calc(100%-1rem)] -translate-x-1/2 lg:bottom-6">
+                <TalkButton />
+              </div>
+              <div className="absolute bottom-2 left-1/2 flex w-full max-w-[calc(100%-0.5rem)] -translate-x-1/2 justify-center px-2 lg:bottom-6 lg:max-w-[calc(100%-1rem)] lg:px-4">
+                <ConversationModule />
+              </div>
+              <div className="absolute bottom-2 left-1/2 flex w-full max-w-[calc(100%-0.5rem)] -translate-x-1/2 justify-center px-2 lg:bottom-6 lg:max-w-[calc(100%-1rem)] lg:px-4">
+                <EncounterOverlay />
+              </div>
+            </div>
+          </main>
+          <div className="h-[40%] min-h-0 shrink-0 lg:hidden">
+            <WorldHudMenuDock />
           </div>
-          <div className="pointer-events-none absolute inset-0 z-10">
-            <WorldHudMenu />
-            <div className="absolute bottom-20 left-1/2 max-w-[calc(100%-2.75rem)] -translate-x-1/2 sm:bottom-6 sm:max-w-[calc(100%-1rem)]">
-              <TalkButton />
-            </div>
-            <div className="absolute bottom-4 left-1/2 flex w-full max-w-[calc(100%-1rem)] -translate-x-1/2 justify-center px-2 sm:bottom-6 sm:px-4">
-              <ConversationModule />
-            </div>
-            <div className="absolute bottom-4 left-1/2 flex w-full max-w-[calc(100%-1rem)] -translate-x-1/2 justify-center px-2 sm:bottom-6 sm:px-4">
-              <EncounterOverlay />
-            </div>
-          </div>
-        </main>
+        </div>
       </div>
       <ChatPanel />
       <Overlays />

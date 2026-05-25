@@ -87,6 +87,7 @@ interface AppState {
   openOverlay: 'hobbies' | 'friends' | 'profile' | 'encounters' | 'daily' | null;
   chatPanelOpen: boolean;
   hudMenuOpen: boolean;
+  mobileNavOpen: boolean;
   thirdCameraDistance: number;
   chatTrigger: { message: string; fixedReply: boolean } | null;
   myFriendId: string;
@@ -122,6 +123,8 @@ interface AppState {
   toggleChatPanel: () => void;
   setHudMenuOpen: (open: boolean) => void;
   toggleHudMenu: () => void;
+  setMobileNavOpen: (open: boolean) => void;
+  toggleMobileNav: () => void;
   adjustThirdCameraDistance: (delta: number) => void;
   setChatTrigger: (t: { message: string; fixedReply: boolean } | null) => void;
   addHumanFriend: (friendId: string) => { ok: boolean; message: string };
@@ -161,6 +164,7 @@ export const useAppStore = create<AppState>((set) => ({
   openOverlay: null,
   chatPanelOpen: false,
   hudMenuOpen: true,
+  mobileNavOpen: false,
   thirdCameraDistance: 4.1,
   chatTrigger: null,
   myFriendId: generateFriendId(),
@@ -207,6 +211,8 @@ export const useAppStore = create<AppState>((set) => ({
     set((s) => ({ chatPanelOpen: !s.chatPanelOpen })),
   setHudMenuOpen: (hudMenuOpen) => set({ hudMenuOpen }),
   toggleHudMenu: () => set((s) => ({ hudMenuOpen: !s.hudMenuOpen })),
+  setMobileNavOpen: (mobileNavOpen) => set({ mobileNavOpen }),
+  toggleMobileNav: () => set((s) => ({ mobileNavOpen: !s.mobileNavOpen })),
   adjustThirdCameraDistance: (delta) =>
     set((s) => ({
       thirdCameraDistance: Math.min(

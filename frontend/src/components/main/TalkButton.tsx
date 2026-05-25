@@ -58,28 +58,22 @@ export default function TalkButton() {
     <button
       onClick={handleClick}
       disabled={loading}
-      className="pointer-events-auto flex items-center gap-3 rounded-full border border-white/10 px-5 py-2.5 shadow-[0_8px_28px_rgba(0,0,0,0.45)] transition-transform hover:scale-105 disabled:opacity-60"
+      className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-white/[0.08] px-4 py-2 shadow-[0_10px_30px_rgba(0,0,0,0.38)] transition-colors hover:border-[#caa85e]/22 hover:bg-white/[0.05] disabled:opacity-60"
       style={{
-        background: `linear-gradient(135deg, ${room.color}, rgba(12, 10, 26, 0.85))`,
-        backdropFilter: 'blur(18px) saturate(160%)',
+        background: 'rgba(12, 10, 26, 0.72)',
+        backdropFilter: 'blur(20px) saturate(170%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
       }}
     >
-      <div
-        className="h-7 w-7 rounded-full"
-        style={{
-          background: `radial-gradient(circle at 30% 30%, ${room.color}, #0a0820 80%)`,
-          boxShadow: `0 0 16px ${room.color}`,
-        }}
-      />
       <div className="text-left leading-tight">
-        <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-white/65">
+        <div className="font-mono text-[8px] font-bold uppercase tracking-[0.2em] text-white/34">
           {room.name}
         </div>
-        <div className="text-[13px] font-medium text-white">
+        <div className="text-[12px] font-medium text-white/88">
           {loading ? '準備中…' : `${residentName} と会話する`}
         </div>
       </div>
-      <span className="ml-1 text-[14px] text-white/75">›</span>
+      <span className="ml-0.5 font-mono text-[12px] text-[#f3dfb0]/72">›</span>
     </button>
   );
 }

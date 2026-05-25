@@ -54,18 +54,21 @@ export default function AppShell() {
   }, [clone, topics, setTopics, addTopic, setActivities, setLatestActivity]);
 
   return (
-    <div className="relative z-10 flex h-screen flex-col">
-      <TopBar />
-      <div className="flex min-h-0 flex-1">
+    <div className="relative z-10 flex h-screen min-h-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <TopBar />
         <main className="relative min-h-0 flex-1 overflow-hidden">
           <div className="absolute inset-0 z-0">
             <VirtualWorld />
           </div>
           <div className="pointer-events-none absolute inset-0 z-10">
-            <div className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2">
-              <ControlModeToggle />
+            <div className="absolute left-4 top-4">
+              <div className="flex flex-col gap-2">
+                <ControlModeToggle />
+                <EncounterTrigger />
+              </div>
             </div>
-            <div className="absolute bottom-6 right-6">
+            <div className="absolute bottom-6 left-6">
               <ControlPad />
             </div>
             <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
@@ -77,13 +80,10 @@ export default function AppShell() {
             <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
               <EncounterOverlay />
             </div>
-            <div className="absolute bottom-6 left-6">
-              <EncounterTrigger />
-            </div>
           </div>
         </main>
-        <ChatPanel />
       </div>
+      <ChatPanel />
       <Overlays />
     </div>
   );

@@ -3,7 +3,7 @@
 import { useRef } from 'react';
 import * as THREE from 'three';
 import { useFrame } from '@react-three/fiber';
-import { Text } from '@react-three/drei';
+import { Billboard, Text } from '@react-three/drei';
 import type { AvatarPalette } from './palettes';
 
 interface Props {
@@ -151,20 +151,21 @@ export default function Avatar({
         <meshStandardMaterial color={palette.body} emissive={palette.body} emissiveIntensity={0.15} />
       </mesh>
       {/* name tag */}
-      <Text
-        position={[0, 1.85, 0]}
-        fontSize={0.18}
-        color={palette.core}
-        anchorX="center"
-        anchorY="middle"
-        outlineWidth={0.005}
-        outlineColor="#06060c"
-      >
-        {name}
-      </Text>
+      <Billboard follow position={[0, 1.85, 0]}>
+        <Text
+          fontSize={0.18}
+          color={palette.core}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.005}
+          outlineColor="#06060c"
+        >
+          {name}
+        </Text>
+      </Billboard>
       {/* speech bubble */}
       {speaking && speech && (
-        <group position={[0, 2.4, 0]}>
+        <Billboard follow position={[0, 2.4, 0]}>
           <mesh>
             <planeGeometry args={[Math.min(4.5, 0.18 * speech.length + 0.7), 0.6]} />
             <meshBasicMaterial color="#0a0820" transparent opacity={0.78} />
@@ -179,7 +180,7 @@ export default function Avatar({
           >
             {speech}
           </Text>
-        </group>
+        </Billboard>
       )}
     </group>
   );

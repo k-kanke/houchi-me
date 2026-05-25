@@ -109,24 +109,22 @@ export default function ChatPanel() {
         WebkitBackdropFilter: 'blur(24px) saturate(160%)',
       }}
     >
-      <div className="flex items-center justify-between border-b border-white/[0.05] px-4 py-3">
+      <div
+        className="flex h-[72px] items-center justify-between border-b border-white/[0.05] px-4"
+        style={{
+          background: 'rgba(10, 8, 32, 0.32)',
+          backdropFilter: 'blur(24px) saturate(160%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+        }}
+      >
         <div className="flex items-center gap-2">
-          <div
-            className={`h-6 w-6 rounded-full bg-gradient-to-br ${
-              chatTarget.type === 'agent'
-                ? chatTarget.palette
-                : chatTarget.type === 'human'
-                  ? 'from-[var(--color-neon-violet)] to-[var(--color-neon-pink)]'
-                  : 'from-[var(--color-neon-violet)] to-[var(--color-neon-cyan)]'
-            }`}
-          />
-          <div className="leading-tight">
-            <div className="text-[12.5px] text-white/90">
+          <div className="flex items-baseline gap-2">
+            <div className="font-mono text-[13px] font-bold uppercase tracking-[0.16em] leading-none text-white/88">
               {chatTarget.type === 'self'
                 ? (clone?.name ?? 'Clone')
                 : chatTarget.name}
             </div>
-            <div className="font-mono text-[9.5px] uppercase tracking-[0.25em] text-white/40">
+            <div className="font-mono text-[13px] font-bold uppercase tracking-[0.16em] text-white/34">
               {chatTarget.type === 'self'
                 ? 'your clone'
                 : chatTarget.type === 'agent'

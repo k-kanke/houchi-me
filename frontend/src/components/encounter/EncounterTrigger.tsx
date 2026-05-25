@@ -15,7 +15,6 @@ export default function EncounterTrigger() {
   const startEncounter = useAppStore((s) => s.startEncounter);
   const [loading, setLoading] = useState(false);
 
-  // Show only when no encounter is active and clone exists
   if (encounter || !clone) return null;
 
   const handleStart = async () => {
@@ -54,23 +53,15 @@ export default function EncounterTrigger() {
     <button
       onClick={handleStart}
       disabled={loading}
-      className="pointer-events-auto flex items-center gap-2.5 rounded-full border border-white/10 px-4 py-2 shadow-[0_8px_28px_rgba(0,0,0,0.45)] transition-all hover:scale-105 disabled:opacity-60"
+      className="pointer-events-auto flex w-full items-center justify-center rounded-full border border-white/[0.08] px-3 py-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.38)] transition-colors hover:border-[#caa85e]/22 hover:bg-white/[0.05] disabled:opacity-60"
       style={{
-        background:
-          'linear-gradient(135deg, rgba(163,120,255,0.35), rgba(79,245,231,0.2))',
-        backdropFilter: 'blur(18px) saturate(160%)',
+        background: 'rgba(12, 10, 26, 0.72)',
+        backdropFilter: 'blur(20px) saturate(170%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(170%)',
       }}
     >
-      <div
-        className="h-6 w-6 flex-shrink-0 rounded-full"
-        style={{
-          background:
-            'radial-gradient(circle at 30% 30%, #a378ff, #0a0820 80%)',
-          boxShadow: '0 0 14px #a378ff99',
-        }}
-      />
-      <span className="text-[12.5px] font-medium text-white">
-        {loading ? '準備中…' : 'アバターと話す'}
+      <span className="font-mono text-[10px] font-bold uppercase tracking-[0.14em] text-white/76">
+        {loading ? 'Preparing…' : 'Talk'}
       </span>
     </button>
   );

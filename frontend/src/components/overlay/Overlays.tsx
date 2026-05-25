@@ -807,16 +807,6 @@ function ProfileViewMode({
 }) {
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[var(--color-neon-violet)] to-[var(--color-neon-cyan)]" />
-        <div>
-          <div className="text-[14px] text-white/95">{clone.name}</div>
-          <div className="text-[11.5px] text-white/55">
-            {clone.mbti} · 同期率 {(clone.syncRate * 100).toFixed(1)}%
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-2 gap-2">
         {rows.map((r) => (
           <div
@@ -898,7 +888,6 @@ function ProfileViewMode({
 function ProfileOverlay({ onClose }: { onClose: () => void }) {
   const clone = useAppStore((s) => s.clone);
   const setClone = useAppStore((s) => s.setClone);
-  const myFriendId = useAppStore((s) => s.myFriendId);
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState('');
   const [mbti, setMbti] = useState('');
@@ -927,12 +916,9 @@ function ProfileOverlay({ onClose }: { onClose: () => void }) {
   if (!clone) return null;
 
   const rows: { label: string; value: string }[] = [
-    { label: 'クローン名', value: clone.name },
     { label: 'MBTI', value: clone.mbti || '—' },
-    { label: '同期率', value: `${(clone.syncRate * 100).toFixed(1)}%` },
     { label: '探索タイプ', value: clone.explorationType },
     { label: '性格シフト', value: clone.personalityShift },
-    { label: 'フレンド ID', value: myFriendId },
   ];
 
   const save = async () => {

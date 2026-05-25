@@ -46,6 +46,7 @@ export default function WorldScene() {
   const setCurrentSpeaker = useAppStore((s) => s.setCurrentSpeaker);
   const currentSpeaker = useAppStore((s) => s.currentSpeaker);
   const controlMode = useAppStore((s) => s.controlMode);
+  const cameraMode = useAppStore((s) => s.cameraMode);
   const manualInput = useAppStore((s) => s.manualInput);
   const chatTarget = useAppStore((s) => s.chatTarget);
   const clone = useAppStore((s) => s.clone);
@@ -71,6 +72,9 @@ export default function WorldScene() {
   const controlsRef = useRef<OrbitControlsImpl>(null);
   const { camera } = useThree();
   const initialized = useRef(false);
+  const cameraOffset = useRef(new THREE.Vector3());
+  const cameraTarget = useRef(new THREE.Vector3());
+  const cameraLookAt = useRef(new THREE.Vector3());
 
   // 部屋アバターの状態：各部屋の現在のセリフ index、向き、プレイヤーが近くにいるか
   const [roomLineIdx, setRoomLineIdx] = useState<number[]>(() => activeRooms.map(() => 0));
@@ -227,6 +231,10 @@ export default function WorldScene() {
     );
   }, [encounter?.sessionId, sagePos, echoPos]);
 
+  useEffect(() => {
+    initialized.current = false;
+  }, [cameraMode]);
+
   // conversation cycle
   useEffect(() => {
     const interval = setInterval(() => {
@@ -296,18 +304,15 @@ export default function WorldScene() {
       //   S/↓ (z=+1) = 後退（向きは変えずに後ろに移動）
       //   A/← (x=-1) = その場で左旋回
       //   D/→ (x=+1) = その場で右旋回
-      //   斜め (NE, NW など) = 旋回しながら移動 → 曲線軌道
+      //   斜め入力 = 旋回しながら移動
       startTime.current = null;
       if (manualInput.x !== 0 || manualInput.z !== 0) {
-        // まず旋回（A/D）を反映。
-        // 前進中（z<=0）は符号反転で画面の左右と一致、後退中（z>0）はそのまま
-        // → SE/SW（後退+左右）でも画面通りの方向に曲がる
         let newRot = miraRot;
         if (manualInput.x !== 0) {
           const rotSign = manualInput.z > 0 ? 1 : -1;
           newRot = miraRot + rotSign * manualInput.x * TURN_SPEED * delta;
         }
-        // 次に前後（W/S）で移動
+
         let newX = miraPos.x;
         let newZ = miraPos.z;
         if (manualInput.z !== 0) {
@@ -619,17 +624,38 @@ export default function WorldScene() {
 
     // カメラ追従: OrbitControls の target を Mira に lerp、カメラも同じデルタ移動
     if (controlsRef.current) {
-      const desired = new THREE.Vector3(nextPos.x, nextPos.y + 0.9, nextPos.z);
+      const facingX = Math.sin(desiredRot);
+      const facingZ = Math.cos(desiredRot);
+      cameraTarget.current.set(nextPos.x, nextPos.y, nextPos.z);
+
+      if (cameraMode === 'third') {
+        cameraOffset.current.set(-facingX * 4.1, 2.45, -facingZ * 4.1);
+        cameraLookAt.current.set(
+          nextPos.x + facingX * 1.6,
+          nextPos.y + 1.1,
+          nextPos.z + facingZ * 1.6,
+        );
+      } else {
+        cameraOffset.current.set(facingX * 0.12, 1.58, facingZ * 0.12);
+        cameraLookAt.current.set(
+          nextPos.x + facingX * 6,
+          nextPos.y + 1.52,
+          nextPos.z + facingZ * 6,
+        );
+      }
+
+      const desiredCameraPos = cameraTarget.current.clone().add(cameraOffset.current);
       if (!initialized.current) {
-        controlsRef.current.target.copy(desired);
+        camera.position.copy(desiredCameraPos);
+        controlsRef.current.target.copy(cameraLookAt.current);
         initialized.current = true;
       } else {
-        const before = controlsRef.current.target.clone();
-        controlsRef.current.target.lerp(desired, 0.08);
-        const delta = controlsRef.current.target.clone().sub(before);
-        camera.position.add(delta);
+        const cameraLerp = cameraMode === 'third' ? 0.14 : 0.2;
+        const targetLerp = cameraMode === 'third' ? 0.18 : 0.24;
+        camera.position.lerp(desiredCameraPos, cameraLerp);
+        controlsRef.current.target.lerp(cameraLookAt.current, targetLerp);
       }
-      controlsRef.current.update();
+      camera.lookAt(controlsRef.current.target);
     }
 
     // publish to store
@@ -675,15 +701,10 @@ export default function WorldScene() {
     <>
       <OrbitControls
         ref={controlsRef}
+        enabled={false}
         enablePan={false}
-        enableDamping
-        dampingFactor={0.12}
-        minDistance={3}
-        maxDistance={18}
-        minPolarAngle={0.15}
-        maxPolarAngle={Math.PI * 0.49}
-        rotateSpeed={0.8}
-        zoomSpeed={0.6}
+        enableZoom={false}
+        enableRotate={false}
       />
       <ambientLight intensity={0.35} color="#a378ff" />
       <hemisphereLight args={['#a378ff', '#06060c', 0.6]} />
@@ -705,15 +726,17 @@ export default function WorldScene() {
       <RoomMarkers />
       <Particles />
 
-      <Avatar
-        name="Mira"
-        palette={PALETTES.mira}
-        position={miraPos}
-        rotationY={miraRot}
-        activity={miraActivity}
-        speaking={!roomConversationId && speakerIdx === 0}
-        speech={!roomConversationId && speakerIdx === 0 ? speech : undefined}
-      />
+      {cameraMode === 'third' ? (
+        <Avatar
+          name="Mira"
+          palette={PALETTES.mira}
+          position={miraPos}
+          rotationY={miraRot}
+          activity={miraActivity}
+          speaking={!roomConversationId && speakerIdx === 0}
+          speech={!roomConversationId && speakerIdx === 0 ? speech : undefined}
+        />
+      ) : null}
       <Avatar
         name="Sage"
         palette={PALETTES.sage}

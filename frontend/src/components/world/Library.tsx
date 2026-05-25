@@ -238,6 +238,17 @@ function Horizon() {
 }
 
 export default function Library() {
+  const eastShelves: Array<{ position: [number, number, number]; rotation: number }> = [
+    { position: [6.8, 0, 0], rotation: -Math.PI / 2 },
+    { position: [5.9, 0, 3.6], rotation: -Math.PI / 2 + 0.34 },
+    { position: [5.9, 0, -3.6], rotation: -Math.PI / 2 - 0.34 },
+  ];
+  const westShelves: Array<{ position: [number, number, number]; rotation: number }> = [
+    { position: [-6.8, 0, 0], rotation: Math.PI / 2 },
+    { position: [-5.9, 0, 3.6], rotation: Math.PI / 2 - 0.34 },
+    { position: [-5.9, 0, -3.6], rotation: Math.PI / 2 + 0.34 },
+  ];
+
   return (
     <>
       <Horizon />
@@ -245,14 +256,21 @@ export default function Library() {
       <Skylight />
       <GridFloor />
       <CentralDesk />
-      {/* east bookshelves */}
-      <Bookshelf position={[6.5, 0, 0]} rotation={-Math.PI / 2} />
-      <Bookshelf position={[6.5, 0, 3.2]} rotation={-Math.PI / 2} />
-      <Bookshelf position={[6.5, 0, -3.2]} rotation={-Math.PI / 2} />
-      {/* west bookshelves */}
-      <Bookshelf position={[-6.5, 0, 0]} rotation={Math.PI / 2} />
-      <Bookshelf position={[-6.5, 0, 3.2]} rotation={Math.PI / 2} />
-      <Bookshelf position={[-6.5, 0, -3.2]} rotation={Math.PI / 2} />
+      {/* east / west bookshelves arranged on shallow arcs */}
+      {eastShelves.map((shelf, index) => (
+        <Bookshelf
+          key={`east-shelf-${index}`}
+          position={shelf.position}
+          rotation={shelf.rotation}
+        />
+      ))}
+      {westShelves.map((shelf, index) => (
+        <Bookshelf
+          key={`west-shelf-${index}`}
+          position={shelf.position}
+          rotation={shelf.rotation}
+        />
+      ))}
       {/* meeting hall area markers */}
       <mesh
         position={[0, 0.02, 5.0]}

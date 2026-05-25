@@ -3,6 +3,7 @@
 import { create } from 'zustand';
 import type {
   ChatTarget,
+  CameraMode,
   Clone,
   CloneActivity,
   ControlMode,
@@ -80,6 +81,7 @@ interface AppState {
   feedback: Record<string, Feedback>;
   viewTab: ViewTab;
   controlMode: ControlMode;
+  cameraMode: CameraMode;
   worldAvatars: WorldAvatarState[];
   currentSpeaker: number;
   bootDone: boolean;
@@ -110,6 +112,7 @@ interface AppState {
   pushFeedback: (feedback: Feedback) => void;
   setViewTab: (tab: ViewTab) => void;
   setControlMode: (mode: ControlMode) => void;
+  setCameraMode: (mode: CameraMode) => void;
   setWorldAvatars: (a: WorldAvatarState[]) => void;
   setCurrentSpeaker: (i: number) => void;
   setBootDone: (v: boolean) => void;
@@ -146,6 +149,7 @@ export const useAppStore = create<AppState>((set) => ({
   feedback: {},
   viewTab: 'world',
   controlMode: 'auto',
+  cameraMode: 'third',
   worldAvatars: [],
   currentSpeaker: 0,
   bootDone: false,
@@ -181,7 +185,12 @@ export const useAppStore = create<AppState>((set) => ({
   pushFeedback: (feedback) =>
     set((s) => ({ feedback: { ...s.feedback, [feedback.topicId]: feedback } })),
   setViewTab: (viewTab) => set({ viewTab }),
-  setControlMode: (controlMode) => set({ controlMode }),
+  setControlMode: (controlMode) =>
+    set((s) => ({
+      controlMode,
+      manualInput: controlMode === 'manual' ? s.manualInput : { x: 0, z: 0 },
+    })),
+  setCameraMode: (cameraMode) => set({ cameraMode }),
   setWorldAvatars: (worldAvatars) => set({ worldAvatars }),
   setCurrentSpeaker: (currentSpeaker) => set({ currentSpeaker }),
   setBootDone: (bootDone) => set({ bootDone }),

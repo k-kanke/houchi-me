@@ -12,6 +12,7 @@ export interface Storage {
   saveFeedback(feedback: Feedback): Promise<void>;
   getMessages(): Promise<Message[]>;
   appendMessage(message: Message): Promise<void>;
+  clearMessages(): Promise<void>;
   updateClone(partial: Partial<Clone>): Promise<Clone | null>;
 }
 
@@ -76,6 +77,9 @@ export class LocalStorageImpl implements Storage {
     const msgs = await this.getMessages();
     msgs.push(message);
     writeJSON(KEYS.messages, msgs);
+  }
+  async clearMessages(): Promise<void> {
+    writeJSON(KEYS.messages, []);
   }
   async updateClone(partial: Partial<Clone>): Promise<Clone | null> {
     const current = await this.getClone();
@@ -272,6 +276,16 @@ export class SupabaseImpl implements Storage {
       role: message.role,
       text: message.text,
     });
+    if (error) throw error;
+  }
+
+  async clearMessages(): Promise<void> {
+    const cloneId = await this.fetchCloneId();
+    if (!cloneId) return;
+    const { error } = await getSupabase()
+      .from('messages')
+      .delete()
+      .eq('clone_id', cloneId);
     if (error) throw error;
   }
 

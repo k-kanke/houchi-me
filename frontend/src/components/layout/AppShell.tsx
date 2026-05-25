@@ -2,25 +2,19 @@
 
 import { useEffect } from 'react';
 import TopBar from './TopBar';
-import Sidebar from './Sidebar';
-import RightPanel from './RightPanel';
-import CommandBar from './CommandBar';
-import Breadcrumb from '@/components/main/Breadcrumb';
-import ViewTabs from '@/components/main/ViewTabs';
-import HudCoord from '@/components/main/HudCoord';
 import ControlModeToggle from '@/components/main/ControlModeToggle';
-import ActivityBadge from '@/components/main/ActivityBadge';
-import WorldStats from '@/components/main/WorldStats';
+import ControlPad from '@/components/main/ControlPad';
+import TalkButton from '@/components/main/TalkButton';
+import ConversationModule from '@/components/main/ConversationModule';
 import { useAppStore } from '@/lib/store';
 import { storage } from '@/lib/storage';
 import { engine } from '@/lib/clone-engine';
 import { todayKey } from '@/lib/util';
-import TodayTopicView from '@/components/topic/TodayTopicView';
-import ChatView from '@/components/chat/ChatView';
 import VirtualWorld from '@/components/world/VirtualWorld';
+import ChatPanel from '@/components/chat/ChatPanel';
+import Overlays from '@/components/overlay/Overlays';
 
 export default function AppShell() {
-  const tab = useAppStore((s) => s.viewTab);
   const clone = useAppStore((s) => s.clone);
   const topics = useAppStore((s) => s.topics);
   const setTopics = useAppStore((s) => s.setTopics);
@@ -52,55 +46,29 @@ export default function AppShell() {
   return (
     <div className="relative z-10 flex h-screen flex-col">
       <TopBar />
-      <div className="grid flex-1 min-h-0 grid-cols-[300px_1fr_320px]">
-        <div className="min-h-0 border-r border-white/[0.06]">
-          <Sidebar />
-        </div>
-        <main className="relative min-h-0 overflow-hidden">
-          <div className="pointer-events-none absolute inset-0 z-10">
-            <div className="absolute left-4 right-4 top-3 flex items-center justify-between">
-              <Breadcrumb />
-              <div className="pointer-events-auto">
-                <ViewTabs />
-              </div>
-            </div>
-            <div className="pointer-events-auto absolute right-4 top-14">
-              <HudCoord />
-            </div>
-            {tab === 'world' && (
-              <>
-                <div className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2">
-                  <ControlModeToggle />
-                </div>
-                <div className="pointer-events-auto absolute bottom-4 left-4">
-                  <ActivityBadge />
-                </div>
-                <div className="pointer-events-auto absolute bottom-4 right-4">
-                  <WorldStats />
-                </div>
-              </>
-            )}
-          </div>
-
+      <div className="flex min-h-0 flex-1">
+        <main className="relative min-h-0 flex-1 overflow-hidden">
           <div className="absolute inset-0 z-0">
-            {tab === 'world' && <VirtualWorld />}
-            {tab === 'note' && (
-              <div className="no-scrollbar h-full overflow-y-auto p-8 pt-20">
-                <TodayTopicView />
-              </div>
-            )}
-            {tab === 'chat' && (
-              <div className="h-full pt-16">
-                <ChatView />
-              </div>
-            )}
+            <VirtualWorld />
+          </div>
+          <div className="pointer-events-none absolute inset-0 z-10">
+            <div className="pointer-events-auto absolute left-4 top-1/2 -translate-y-1/2">
+              <ControlModeToggle />
+            </div>
+            <div className="absolute bottom-6 right-6">
+              <ControlPad />
+            </div>
+            <div className="absolute bottom-6 left-1/2 -translate-x-1/2">
+              <TalkButton />
+            </div>
+            <div className="absolute bottom-6 left-1/2 flex w-full -translate-x-1/2 justify-center px-4">
+              <ConversationModule />
+            </div>
           </div>
         </main>
-        <div className="min-h-0 border-l border-white/[0.06]">
-          <RightPanel />
-        </div>
+        <ChatPanel />
       </div>
-      <CommandBar />
+      <Overlays />
     </div>
   );
 }

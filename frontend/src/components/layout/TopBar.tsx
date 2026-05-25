@@ -2,10 +2,25 @@
 
 import { useAppStore } from '@/lib/store';
 
+const NAV_BUTTONS = [
+  { id: 'hobbies' as const, label: 'ハマっている趣味', icon: '✦' },
+  { id: 'friends' as const, label: 'フレンド', icon: '◍' },
+  { id: 'profile' as const, label: 'プロフィール', icon: '◉' },
+];
+
 export default function TopBar() {
-  const clone = useAppStore((s) => s.clone);
+  const openOverlay = useAppStore((s) => s.openOverlay);
+  const setOpenOverlay = useAppStore((s) => s.setOpenOverlay);
+
   return (
-    <header className="glass-strong relative z-20 flex items-center justify-between gap-4 px-5 py-3">
+    <header
+      className="relative z-20 flex items-center border-b border-white/[0.06] px-5 py-3"
+      style={{
+        background: 'rgba(10, 8, 32, 0.35)',
+        backdropFilter: 'blur(20px) saturate(160%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(160%)',
+      }}
+    >
       <div className="flex items-center gap-3">
         <div className="relative h-7 w-7">
           <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--color-neon-violet)] to-[var(--color-neon-cyan)]" />
@@ -25,25 +40,25 @@ export default function TopBar() {
         </div>
       </div>
 
-      <div className="hidden flex-1 max-w-xl items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 md:flex">
-        <span className="font-mono text-[11px] text-white/40">⌘K</span>
-        <input
-          className="flex-1 bg-transparent text-sm text-white/80 placeholder:text-white/30 focus:outline-none"
-          placeholder="クローン、ノート、Topic、出会ったクローン..."
-        />
-      </div>
-
-      <div className="flex items-center gap-2">
-        <button className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[11px] text-white/70 hover:bg-white/[0.06]">
-          通知 · 3
-        </button>
-        <div className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-2 py-1">
-          <div className="h-6 w-6 rounded-full bg-gradient-to-br from-[var(--color-neon-violet)] to-[var(--color-neon-cyan)]" />
-          <span className="pr-2 text-xs text-white/80">
-            {clone?.name ?? 'Guest'}
-          </span>
-        </div>
-      </div>
+      <nav className="absolute left-1/2 flex -translate-x-1/2 items-center gap-1.5">
+        {NAV_BUTTONS.map((btn) => {
+          const active = openOverlay === btn.id;
+          return (
+            <button
+              key={btn.id}
+              onClick={() => setOpenOverlay(active ? null : btn.id)}
+              className={`flex items-center gap-2 rounded-full border px-4 py-1.5 text-[12px] transition-colors ${
+                active
+                  ? 'border-[var(--color-neon-cyan)]/40 bg-white/[0.08] text-[var(--color-neon-cyan)]'
+                  : 'border-white/10 bg-white/[0.03] text-white/75 hover:bg-white/[0.06] hover:text-white'
+              }`}
+            >
+              <span className="text-[13px] leading-none">{btn.icon}</span>
+              <span>{btn.label}</span>
+            </button>
+          );
+        })}
+      </nav>
     </header>
   );
 }

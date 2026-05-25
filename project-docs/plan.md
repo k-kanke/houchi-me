@@ -47,6 +47,32 @@
 
 **まだ Must として未達のもの**: Supabase local / cloud 上での実動確認、毎日の質問 UI、興味マップ・ノート・タイムラインの専用画面と API 連携。**Milestone A 系で Vite に積んでいた WASD 操作・興味マップ画面・タイムライン画面は再移植が必要。**
 
+### 0.3.5 Milestone C — 実験 UI リデザイン（experiment ブランチ・2026-05-25）
+
+PM 確認を待つ前提で、`experiment/ui-redesign-chat-overlay` ブランチに UI 全面リデザイン版を切り出した。main にはマージ前提でなく、デザイン方針の決定後に取り込むかを判断する。BE 引き継ぎは別途整理済み（§3.5）。
+
+| 領域 | Milestone C で導入したもの |
+|------|----------------------------|
+| シェル | Sidebar / RightPanel / CommandBar / ViewTabs を撤去。半透明 TopBar（中央に 3 ボタン：ハマっている趣味 / フレンド / プロフィール） |
+| 右パネル | Claude 風 ChatPanel（常時右側 380px）。固定返信あり。会話相手を `chatTarget` で切替（自分 / 人間 / エージェント） |
+| オーバーレイ | 3 ボタンから半透明モーダル：趣味（今 / 昔の 2 セクション、タップで「なぜ」表示 + 「クローンと話す」）、フレンド（フレンド ID + ID 追加 + 詳細）、プロフィール（編集モード対応） |
+| 3D シェル | OrbitControls 導入（ドラッグで視点回転、ホイールでズーム）。カメラは Mira を追従しつつユーザー操作可 |
+| 操作系 | タンクコントロール（W/S 前進後退、A/D 旋回）。8 方向 ControlPad（WASD/矢印キーと連動） |
+| 部屋 | `clone.likes` ↔ 部屋の直接対応（9 テンプレ：筋トレ / 登山 / 音楽 / ダンス / カフェ / 写真 / 韓ドラ / 料理 / 旅）。likes 編集で即増減反映 |
+| 会話 | 集会場で 3 体が向き合う会話サイクル。部屋アバターには「会話する」ボタン → 5 ターンの掛け合いを **下部 ConversationModule（不透明）** に表示（3D 吹き出しは抑制） |
+| NPC | Sage / Echo + 各部屋に常駐 1 名 + フリーエージェント 5 名。全員 Mira と同じウェイポイント方式で歩く。60s ごとに roster と identity がローテーション |
+| プロフィール編集 | 名前 / MBTI / likes / dislikes / 自己紹介 / なりたい自分 を編集可能。保存で即 3D に反映 |
+
+実装ファイル：
+- 新規：`components/chat/ChatPanel.tsx`、`components/overlay/Overlays.tsx`、`components/main/ControlPad.tsx`、`components/main/TalkButton.tsx`、`components/main/ConversationModule.tsx`、`components/world/RoomMarkers.tsx`
+- 改修：`components/layout/AppShell.tsx`, `TopBar.tsx`、`components/world/WorldScene.tsx`, `palettes.ts`、`lib/store.ts`, `storage.ts`, `types/index.ts`
+- 削除：`components/world/CameraRig.tsx`（OrbitControls + 直接更新方式に置換）
+
+**現状の既知の制約**:
+- Supabase env がセットされている場合、`SupabaseImpl.updateClone` は認証必須。匿名サインインが完了していないとプロフィール編集が画面に反映されない（§3.5 参照）。
+- ChatPanel の AI エージェント返信は固定文「API 接続後にチャット機能は利用可能になります」。
+- 部屋アバターの掛け合いセリフ、フリーエージェントの roster はすべてハードコード（`palettes.ts`）。
+
 ### 0.4 ここから取り組むタスク（推奨順）
 
 > 着手前は [rule.md](./rule.md) で **LINE 担当宣言** → ブランチ `feat/ho-xxx-...` → PR 時に §10 のチェックを更新。
@@ -361,6 +387,31 @@ flowchart LR
 | タイムラインモック | 当日 `clone_activities` | 王蕙鈺 / 柴沼勇太 |
 | 3D 吹き出し固定 | `encounter-dialogue`（HO-115） | 阿部勝寿 / 柴沼勇太 |
 | コマンドバー未接続 | `parse-clone-command` 等 | 柴沼勇太 / 阿部勝寿 |
+
+### 3.5 Milestone C（実験 UI）の BE 引き継ぎ事項
+
+experiment ブランチに切り出した UI リデザイン版を main にマージする場合、以下を BE / Infra で対応する必要がある。詳細は別ドキュメント（PR の本文 / Notion を参照）。
+
+| 領域 | やること | 担当 |
+|------|----------|------|
+| **認証フロー** | `SupabaseImpl.updateClone` は認証必須。匿名サインインを Loader / `ensureUser` 経由で確実に完了させる。または update 系の API に `ensureUser` を自動で呼ぶ | 阿部勝寿 / 菅家孝太郎 |
+| **friend_id** | `clones`/`profiles` に `friend_id TEXT UNIQUE`（XXXX-XXXX 形式）追加、DB トリガで自動採番、取得用 RPC | 阿部勝寿 |
+| **friendships** | `user_a_id` / `user_b_id` / `status` の双方向承認フロー（plan.md HO-504 関連） | 阿部勝寿 |
+| **past_likes / like_reasons** | `clones` に past_likes 列を追加。reason は `clones.like_reasons JSONB` か Claude 動的生成 | 阿部勝寿 |
+| **agents テーブル + roster** | テーマ毎に 3 名以上の roster。`agents`（id / template_id / name / palette / system_prompt）に 9 × 3 行のシード | 阿部勝寿 |
+| **agent_dialogues** | 部屋アバター ↔ Mira の 5 ターン掛け合いを格納 or 動的生成（`encounter-dialogue`） | 阿部勝寿 |
+| **agent-chat Edge Function** | ChatPanel から AI エージェントを呼ぶ経路。固定返信を Claude 出力に差し替える | 阿部勝寿 |
+| **agent-monologue（Should）** | 部屋アバターのモノローグを roster ごとに動的化 | 阿部勝寿 |
+| **clone-chat 本番化** | 自分のクローン経由のチャット（HO-113 を完成） | 阿部勝寿 |
+| **インフラ** | ANTHROPIC_API_KEY のデプロイ、RLS（`friendships` / `agents` / `agent_dialogues`）、Realtime（Should） | 菅家孝太郎 / 阿部勝寿 |
+
+FE 側のモック差し替えポイント：
+- `lib/storage.ts` 認証ガードを `ensureUser` に統一
+- `lib/store.ts` の `generateFriendId()` をログイン時取得に
+- `lib/clone-engine.ts` を `LLMMockImpl` → `ClaudeApiImpl`
+- `components/chat/ChatPanel.tsx` の `FIXED_REPLY_TEXT` を `agent-chat` 呼び出しに
+- `components/world/palettes.ts` の `ROOM_TEMPLATES[*].dialogue` / `.lines` / `.roster` を DB / Edge Function に
+- `components/overlay/Overlays.tsx` の `MOCK_PAST_HOBBIES` を `clone.past_likes` に
 
 ---
 
@@ -732,4 +783,5 @@ frontend/
 | 2026-05-25 | クローン手動操作（Phase C2 `HO-219`〜`HO-224`）、§0.4 スプリント 2.5 を追加 |
 | 2026-05-25 | デプロイ（Phase G 拡充 `HO-606`〜`HO-610`）、デザイン/UI（Phase H `HO-701`〜`HO-710`）、README 担当割り振り |
 | 2026-05-25 | §0.4・§5 全タスク表に担当者氏名列を追加 |
-| 2026-05-25 | **Milestone B**：`houchi-me/` (Next.js 16 + R3F + Zustand + TS) を `frontend/` に昇格し旧 Vite フロントと統合、`houchi-me/` 削除。backend Supabase を houchi-me スキーマ (`profiles/clones/topics/messages/feedback`) に全面置換。Gemini + Edge Functions 路線で LLM 抽象を整備し、`vercel.json` と CI env を Next.js 用に更新、root の `node_modules` 削除し `frontend/` で再 install。§0.3 / §1.1 / §2 / §3 / §6 / §10 / §11 を全面改訂 |
+| 2026-05-25 | **Milestone B**：`houchi-me/` (Next.js 16 + R3F + Zustand + TS) を `frontend/` に昇格し旧 Vite フロントと統合、`houchi-me/` 削除。backend Supabase を houchi-me スキーマ (`profiles/clones/topics/messages/feedback`) に全面置換。AI プロバイダを Gemini → **Claude API** に変更（接続抽象は `frontend/src/lib/clone-engine.ts`）。Dockerfile/docker-compose/vercel.json/CI env を Next.js 用に更新、root の `node_modules` 削除し `frontend/` で再 install。§0.3 / §1.1 / §2 / §3 / §6 / §10 / §11 を全面改訂 |
+| 2026-05-25 | **Milestone C（実験 UI リデザイン）**：`experiment/ui-redesign-chat-overlay` ブランチで UI 全面リデザイン。半透明 TopBar + Claude 風 ChatPanel + 3 オーバーレイ（趣味 / フレンド / プロフィール）+ プロフィール編集 + タンクコントロール + OrbitControls 視点操作 + 9 部屋テンプレ（clone.likes 連動）+ ConversationModule（不透明な下部会話 UI）+ 各部屋常駐 1 名 + フリーエージェント 5 名のローテーション + 全 NPC を Mira と同じウェイポイント方式で歩行。§0.3.5 と §3.5 を追加、BE 引き継ぎ事項を整理 |

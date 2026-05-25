@@ -417,6 +417,38 @@
 - **評価**：採用
 - **採用 / 不採用の理由**：HO-219 のスコープ（モード切替トグル + 自動巡回停止）は要件を満たし、ブラウザでの動作確認も完了。既存の HUD レイアウト不具合（HUD が見えない問題）を発見できたため、HO-705 を待たずに同 PR で z-index 修正を含める判断ができた。カメラモードの簡素化は実プロダクトで使わない機能を削るリファクタとして妥当。
 
+### #014 実験 UI リデザイン（Milestone C）
+
+- **時刻**：22:30
+- **ツール**：Claude Code (Opus 4.7)
+- **目的**：plan.md とは独立に、UI 全体を「半透明 TopBar + 3 オーバーレイ + 常時 Claude 風 ChatPanel + 3D 内に部屋とアバター」のリデザイン版にして、デザイン方針の判断材料を作る。`experiment/ui-redesign-chat-overlay` ブランチに分離。
+- **プロンプト**：
+  ```
+  一旦ちょっとUIUXの新規案が出てきたので試します。今の右左に表示されている長方形のセクションを一旦削除して右側に現在の生成AIと同じようなチャット画面を作ってください。また上部バーを半透明で作ってその中にハマっている趣味、フレンド、プロフィールボタンを作ってそのボタンを押したらそれぞれの詳細が半透明で表示されるようにしてください。これはplan.mdとかは完全に関係ないものです。
+  （以降、UI調整を多数の追加プロンプトで進めた。主な追加要件）
+  ・ハマっている趣味は「今/昔」の 2 セクション、タップで「なぜハマっていたか」を表示し「クローンと話す」ボタンから ChatPanel に定型文を流す
+  ・フレンドは人間ユーザーのみ。フレンドID（XXXX-XXXX）の発行と ID 追加 UI を作る
+  ・プロフィールは編集モード（名前 / MBTI / likes / dislikes / 自己紹介 / なりたい自分）を実装、likes を変えると 3D の部屋が即増減
+  ・3D の視点はユーザーがドラッグ / ホイールで自由に操作。手動操作はタンクコントロール（W/S 前進後退、A/D 旋回）+ 8 方向 ControlPad
+  ・3 体のアバターは近接時のみ会話成立、向き合って吹き出し
+  ・clone.likes に応じてテーマ部屋（最大 8）が円周配置、各部屋に専用アバター
+  ・「会話する」ボタンを押したら ChatPanel ではなく 3D 内で吹き出し対話、ただし吹き出しは新規 ConversationModule（下部・不透明）に表示
+  ・自分以外の AI エージェントが入れ替わり立ち替わり場にいる（最大 5 → 後に各部屋常駐 1 + フリー 5 へ拡張）
+  ・各部屋住人は roster からローテーション、全 NPC が Mira と同じウェイポイント方式で歩く
+  ```
+- **出力サマリ**：
+  - `components/chat/ChatPanel.tsx` を新規作成し、右側に Claude 風の常時表示チャットを実装（fixedReply 経路つき）
+  - `components/overlay/Overlays.tsx` を新規作成し、半透明モーダル 3 種（趣味 / フレンド / プロフィール編集）を実装。趣味タップで詳細とチャットトリガー、フレンドは ID 発行 + 追加 + プロフィール詳細、プロフィールは保存で `setClone` + `storage.updateClone`
+  - `components/main/ControlPad.tsx` / `TalkButton.tsx` / `ConversationModule.tsx` を新規作成。タンクコントロール、近接ベースの「会話する」ボタン、5 ターン掛け合いの下部不透明 UI を実装
+  - `components/world/RoomMarkers.tsx` を新規作成し、各部屋に床リング + 入口ゲート（柱 2 本 + 梁）+ テーマプロップ（バーベル / 山 / ギター / リング / カップ / レンズ / フィルムリール / 皿 / コンパス / 汎用球）を描画
+  - `components/world/palettes.ts` を全面改訂し、9 テーマ × 3 名の `roster` と 5 ターンの `dialogue`、`getActiveRooms(likes)` のキャッシュつきヘルパーを追加
+  - `components/world/WorldScene.tsx` に OrbitControls 導入、`CameraRig.tsx` を撤去。タンクコントロール、3D 会話時の facing 制御、5 人のフリーエージェント + 各部屋住人 1 人の自律歩行（waypoint + lerp）、60 秒ごとの roster ローテーションを実装
+  - `lib/store.ts` に `openOverlay` / `chatTarget` / `manualInput` / `roomConversationId` / `convTurnIdx` / `humanFriends` / `myFriendId` / `activeAgentRoomIds` / `roomResidents` を追加
+  - `lib/storage.ts` の Storage インターフェイスに `clearMessages` を追加（LocalStorage / Supabase 双方実装）
+  - `npm run build` 成功確認
+- **評価**：採用
+- **採用 / 不採用の理由**：UI/UX 案を素早く動く形で具現化でき、PM と全員でデザイン方針を比較検討できる土台ができた。BE 引き継ぎ事項（認証フロー / agents テーブル / agent_dialogues / encounter-dialogue 等）も §3.5 に整理。main にマージするかは PM 判断だが、現時点で動作確認可能な実験ブランチとして残せる価値が高い。
+
 ---
 
 ## Day 3（2026-05-26）

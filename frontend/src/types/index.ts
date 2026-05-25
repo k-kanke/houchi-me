@@ -51,6 +51,30 @@ export interface Feedback {
 export type ViewTab = 'note' | 'world' | 'chat';
 export type ControlMode = 'auto' | 'manual';
 
+export interface HumanFriend {
+  id: string;
+  friendId: string; // ユーザー間で共有するコード
+  name: string;
+  bio: string;
+  addedAt: string;
+}
+
+export type ChatTarget =
+  | { type: 'self' }
+  | {
+      type: 'agent';
+      id: string;
+      name: string;
+      palette: string;
+      topic: string;
+    }
+  | { type: 'human'; id: string; name: string; friendId: string };
+
+export interface ManualInput {
+  x: number; // -1..1
+  z: number; // -1..1
+}
+
 export interface WorldAvatarState {
   id: 'mira' | 'sage' | 'echo';
   name: string;

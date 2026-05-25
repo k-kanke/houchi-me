@@ -416,10 +416,16 @@ export class SupabaseImpl implements Storage {
   async getLatestActivity(): Promise<CloneActivity | null> {
     const cloneId = await this.fetchCloneId();
     if (!cloneId) return null;
+    const start = new Date();
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setDate(end.getDate() + 1);
     const { data, error } = await getSupabase()
       .from('clone_activities')
       .select('*')
       .eq('clone_id', cloneId)
+      .gte('occurred_at', start.toISOString())
+      .lt('occurred_at', end.toISOString())
       .order('occurred_at', { ascending: false })
       .limit(1)
       .maybeSingle();

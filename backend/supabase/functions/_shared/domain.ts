@@ -46,6 +46,21 @@ export interface CloneEncounterRecord {
   created_at: string;
 }
 
+export interface EncounterLogSummary {
+  resonated: string[];
+  newInterests: string[];
+  selfDiscovery: string;
+  hobbyDiscoveries: string[];
+}
+
+export interface EncounterLogRecord {
+  id: string;
+  clone_id: string;
+  avatar_name: string;
+  summary: EncounterLogSummary | null;
+  occurred_at: string;
+}
+
 export interface GeneratedTopicPayload {
   title: string;
   reasoning: string;

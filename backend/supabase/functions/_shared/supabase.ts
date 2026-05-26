@@ -1,5 +1,5 @@
 import { createClient, type SupabaseClient } from 'npm:@supabase/supabase-js@2';
-import type { CloneEncounterRecord, CloneRecord, MessageRecord, TopicRecord } from './domain.ts';
+import type { CloneEncounterRecord, CloneRecord, EncounterLogRecord, MessageRecord, TopicRecord } from './domain.ts';
 
 function getSupabaseUrl(req: Request): string {
   return (
@@ -118,19 +118,20 @@ export async function fetchRecentEncounters(
   supabase: SupabaseClient,
   cloneId: string,
   limit = 5,
-): Promise<CloneEncounterRecord[]> {
+): Promise<EncounterLogRecord[]> {
   const { data, error } = await supabase
-    .from('clone_encounters')
-    .select('*')
+    .from('encounter_logs')
+    .select('id, avatar_name, summary, occurred_at')
     .eq('clone_id', cloneId)
-    .order('created_at', { ascending: false })
+    .not('summary', 'is', null)
+    .order('occurred_at', { ascending: false })
     .limit(limit);
 
   if (error) {
     throw new Error(`Failed to load encounters: ${error.message}`);
   }
 
-  return (data ?? []) as CloneEncounterRecord[];
+  return (data ?? []) as EncounterLogRecord[];
 }
 
 export async function fetchDailyQuestions(

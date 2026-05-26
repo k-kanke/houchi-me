@@ -89,6 +89,7 @@ export async function POST(req: Request) {
     // 会話ログ + 要約を保存
     const { error } = await supabase.from('encounter_logs').insert({
       clone_id: session.cloneId,
+      avatar_name: session.avatarName,
       dialogue: session.history,
       summary,
     });

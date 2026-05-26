@@ -83,7 +83,7 @@ export async function generateText(input: {
     contents: input.contents,
     generationConfig: {
       temperature: 0.8,
-      maxOutputTokens: 512,
+      maxOutputTokens: 4096,
     },
   });
 

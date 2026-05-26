@@ -2,6 +2,7 @@ import type {
   CloneEncounterRecord,
   CloneRecord,
   DailyAnswerInput,
+  EncounterLogRecord,
   GeneratedDailyAnswerPayload,
   GeneratedDayPayload,
   GeneratedEncounterPayload,
@@ -117,29 +118,24 @@ export function buildRecentTopicContext(topics: TopicRecord[]): string {
   ].join('\n');
 }
 
-function buildEncounterSummary(encounter: CloneEncounterRecord): string {
-  const dialogue = Array.isArray(encounter.dialogue)
-    ? encounter.dialogue
-      .slice(0, 4)
-      .map((line) => {
-        const speaker = String(line?.speaker ?? '').trim();
-        const text = String(line?.text ?? '').trim();
-        if (!speaker || !text) return null;
-        return `${speaker}: ${text}`;
-      })
-      .filter((line): line is string => line !== null)
-    : [];
+function buildEncounterSummary(encounter: EncounterLogRecord): string {
+  const s = encounter.summary;
+  if (!s) return '';
 
-  const lines = [
-    `- ${encounter.created_at}: ${encounter.partner_name} と ${encounter.location} で会話`,
-  ];
+  const date = encounter.occurred_at.slice(0, 10);
+  const lines = [`- ${date}: ${encounter.avatar_name} との会話`];
 
-  if (encounter.cross_topic?.trim()) {
-    lines.push(`  交差Topic: ${encounter.cross_topic.trim()}`);
+  if (s.resonated?.length > 0) {
+    lines.push(`  印象に残ったこと: ${s.resonated.join('、')}`);
   }
-
-  if (dialogue.length > 0) {
-    lines.push(`  会話抜粋: ${dialogue.join(' / ')}`);
+  if (s.newInterests?.length > 0) {
+    lines.push(`  気になり始めたこと: ${s.newInterests.join('、')}`);
+  }
+  if (s.selfDiscovery) {
+    lines.push(`  自己発見: ${s.selfDiscovery}`);
+  }
+  if (s.hobbyDiscoveries?.length > 0) {
+    lines.push(`  ハマったもの: ${s.hobbyDiscoveries.join('、')}`);
   }
 
   return lines.join('\n');
@@ -196,19 +192,15 @@ function buildMockEncounterSummaries(
 export function buildRecentEncounterContext(
   clone: CloneRecord,
   topics: TopicRecord[],
-  encounters: CloneEncounterRecord[],
+  encounters: EncounterLogRecord[],
 ): string {
-  if (encounters.length === 0) {
-    return [
-      '最近のエージェント会話ログ:',
-      ...buildMockEncounterSummaries(clone, topics),
-    ].join('\n');
+  const summaries = encounters.map(buildEncounterSummary).filter(Boolean);
+
+  if (summaries.length === 0) {
+    return '最近のエージェント会話ログ: なし';
   }
 
-  return [
-    '最近のエージェント会話ログ:',
-    ...encounters.map(buildEncounterSummary),
-  ].join('\n');
+  return ['最近のエージェント会話ログ:', ...summaries].join('\n');
 }
 
 export function buildTopicGenerationPrompt(
@@ -232,16 +224,17 @@ export function buildTopicGenerationPrompt(
 export function buildChatPrompt(
   clone: CloneRecord,
   topics: TopicRecord[],
-  encounters: CloneEncounterRecord[],
+  encounters: EncounterLogRecord[],
   messages: MessageRecord[],
   userText: string,
 ): { systemInstruction: string; contents: GeminiContent[] } {
   const prelude = [
     `あなたはユーザー「${clone.name}」を模したクローンAI「${clone.name}」です。`,
     '口調は柔らかく、内省的で、少し観察的です。',
-    '返答は日本語で 2〜4 文、最大 180 文字程度に収めてください。',
+    '返答は日本語で 3〜5 文程度にしてください。文の途中で切らず、必ず文章を完結させてください。',
     '少なくとも一度は、ユーザーの既存の好みや理想像との接点に触れてください。',
-    '最近のエージェントとの会話ログがあれば、それを自分の記憶として参照して答えてください。',
+    '最近のエージェント会話ログがあれば、それを自分の記憶として参照してください。',
+    '趣味や好きなものについて聞かれたら、会話ログの「ハマったもの」「印象に残ったこと」を根拠として自然に説明してください。',
     '断定しすぎず、必要なら仮説として話してください。',
     'Markdown や箇条書きは使わず、自然なチャット文だけを返してください。',
   ].join('\n');

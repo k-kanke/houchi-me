@@ -425,13 +425,33 @@ export default function WorldScene() {
     }
 
     if (conversingRoomPos && conversingRoom) {
-      // 部屋アバターと 3D 会話中: その場で停止し、相手を向く
+      // 部屋アバターと 3D 会話中: 相手の手前 1.8 unit まで歩いて止まり、向き合う
       startTime.current = null;
-      nextPos = miraPos;
-      desiredRot = Math.atan2(
-        conversingRoomPos.x - miraPos.x,
-        conversingRoomPos.z - miraPos.z,
-      );
+      const APPROACH_DIST = 1.8;
+      const dirFromAgentX = miraPos.x - conversingRoomPos.x;
+      const dirFromAgentZ = miraPos.z - conversingRoomPos.z;
+      const dirLen = Math.hypot(dirFromAgentX, dirFromAgentZ);
+      const ndx = dirLen > 0.0001 ? dirFromAgentX / dirLen : 0;
+      const ndz = dirLen > 0.0001 ? dirFromAgentZ / dirLen : 1;
+      const approachX = conversingRoomPos.x + ndx * APPROACH_DIST;
+      const approachZ = conversingRoomPos.z + ndz * APPROACH_DIST;
+      const toApproachX = approachX - miraPos.x;
+      const toApproachZ = approachZ - miraPos.z;
+      const distToApproach = Math.hypot(toApproachX, toApproachZ);
+      if (distToApproach > 0.05) {
+        const step = Math.min(MANUAL_SPEED * delta, distToApproach);
+        const moveX = (toApproachX / distToApproach) * step;
+        const moveZ = (toApproachZ / distToApproach) * step;
+        nextPos = new THREE.Vector3(miraPos.x + moveX, miraPos.y, miraPos.z + moveZ);
+        setMiraPos(nextPos);
+        desiredRot = Math.atan2(toApproachX, toApproachZ);
+      } else {
+        nextPos = miraPos;
+        desiredRot = Math.atan2(
+          conversingRoomPos.x - miraPos.x,
+          conversingRoomPos.z - miraPos.z,
+        );
+      }
       activity = `会話中 · ${conversingRoom.avatarName}`;
       if (miraActivity !== activity) setMiraActivity(activity);
     } else if (chattingWithAgent && agentPos) {
@@ -804,7 +824,54 @@ export default function WorldScene() {
       controlMode === 'manual' ||
       (controlMode === 'auto' && cameraFollowAgent);
 
-    if (controlsRef.current && shouldFollowCamera) {
+    // 会話相手の位置（部屋チャット or エンカウント）
+    const cinematicPartnerPos =
+      conversingRoomPos && conversingRoom
+        ? conversingRoomPos
+        : encounter
+          ? encounterLivePos.current
+          : null;
+
+    if (cinematicPartnerPos && controlsRef.current) {
+      // 会話中: Mira と相手の中点を見る 2 ショット（横から）
+      const midX = (nextPos.x + cinematicPartnerPos.x) / 2;
+      const midZ = (nextPos.z + cinematicPartnerPos.z) / 2;
+      const axisX = cinematicPartnerPos.x - nextPos.x;
+      const axisZ = cinematicPartnerPos.z - nextPos.z;
+      const axisLen = Math.hypot(axisX, axisZ);
+      let perpX = 1;
+      let perpZ = 0;
+      if (axisLen > 0.01) {
+        perpX = -axisZ / axisLen;
+        perpZ = axisX / axisLen;
+      }
+      // 現在のカメラ位置に近い側を選ぶ（180°回り込みを防ぐ）
+      const camToMidX = camera.position.x - midX;
+      const camToMidZ = camera.position.z - midZ;
+      const dot = camToMidX * perpX + camToMidZ * perpZ;
+      const sign = dot < 0 ? -1 : 1;
+      perpX *= sign;
+      perpZ *= sign;
+
+      const CONV_CAM_DIST = 5;
+      const CONV_CAM_HEIGHT = 2.3;
+      const desiredCamPos = new THREE.Vector3(
+        midX + perpX * CONV_CAM_DIST,
+        nextPos.y + CONV_CAM_HEIGHT,
+        midZ + perpZ * CONV_CAM_DIST,
+      );
+      const lookAtPoint = new THREE.Vector3(midX, nextPos.y + 0.9, midZ);
+
+      if (!initialized.current) {
+        camera.position.copy(desiredCamPos);
+        controlsRef.current.target.copy(lookAtPoint);
+        initialized.current = true;
+      } else {
+        camera.position.lerp(desiredCamPos, 0.09);
+        controlsRef.current.target.lerp(lookAtPoint, 0.09);
+      }
+      camera.lookAt(controlsRef.current.target);
+    } else if (controlsRef.current && shouldFollowCamera) {
       const facingX = Math.sin(displayRot);
       const facingZ = Math.cos(displayRot);
       cameraTarget.current.set(nextPos.x, nextPos.y, nextPos.z);

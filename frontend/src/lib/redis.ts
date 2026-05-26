@@ -19,6 +19,7 @@ export interface EncounterSession {
   cloneId: string;
   cloneName: string;
   avatarName: string;
+  avatarSystemInstruction: string;
   cloneContext: string;
   history: { role: 'user' | 'model'; content: string }[];
 }

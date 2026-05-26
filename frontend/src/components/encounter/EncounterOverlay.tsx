@@ -13,6 +13,14 @@ const AVATAR_COLORS: Record<string, string> = {
 };
 const DEFAULT_WILD_COLOR = '#a378ff';
 
+function applyHobbyDiscoveries(discoveries: string[] | undefined) {
+  if (!discoveries?.length) return;
+  const { clone, setClone } = useAppStore.getState();
+  if (!clone) return;
+  const merged = [...new Set([...clone.likes, ...discoveries])];
+  setClone({ ...clone, likes: merged });
+}
+
 export default function EncounterOverlay() {
   const encounter = useAppStore((s) => s.encounter);
   const clone = useAppStore((s) => s.clone);
@@ -50,6 +58,7 @@ export default function EncounterOverlay() {
         });
         const result = await res.json();
         console.log('[encounter/end]', result);
+        applyHobbyDiscoveries(result.hobbyDiscoveries);
         endEncounter();
       }, END_DELAY_MS);
       return;
@@ -148,6 +157,7 @@ export default function EncounterOverlay() {
     });
     const result = await res.json();
     console.log('[encounter/end]', result);
+    applyHobbyDiscoveries(result.hobbyDiscoveries);
     useAppStore.getState().endEncounter();
   };
 

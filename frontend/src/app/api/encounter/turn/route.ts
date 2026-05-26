@@ -36,7 +36,9 @@ ${session.cloneContext}
 
 ルール:
 - 1〜2文で返す
-- 自分のプロフィールや興味を反映した自然な返答をする
+- 好きなもの・熱狂していることが話題に上がったら、その熱量をそのまま出す
+- 苦手・嫌いなものが話題になっても、なぜ苦手なのかを素直に言語化する（避けない）
+- 好き・嫌い、はプロフィール通りにはっきり反映させる。ただし嫌いなものも「もしかしたら」という余地を持って話す
 - 日本語で話す`,
           },
           contents: session.history.map((h) => ({
@@ -70,15 +72,15 @@ ${session.cloneContext}
         const wildStream = await genai.models.generateContentStream({
           model: 'gemini-2.5-flash',
           config: {
-            systemInstruction: `あなたは「叡智の図書館」を探索しているクローンAIです。
-以下のクローンプロフィールを持つ相手と会話しています。
+            systemInstruction: `${session.avatarSystemInstruction}
 
+今会話している相手のプロフィール:
 ${session.cloneContext}
 
-ルール:
-- 2〜3文程度で返す
-- 相手の発言に共感・深掘り・新しい視点を加える
-- 日本語で話す`,
+追加ルール:
+- 相手が熱量を持って話しているなら「それってどんなところが？」「いつからハマったの？」のようにさらに掘り下げる
+- 相手が苦手・嫌いと言っても否定せず、自分の視点から別の角度を自然に提示する
+- 自分の熱狂・体験を具体的なエピソードで語り、相手の世界と交差させる`,
           },
           contents: [
             ...wildBase,

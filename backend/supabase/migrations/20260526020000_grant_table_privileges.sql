@@ -8,3 +8,4 @@ grant select                          on public.encounter_logs          to authe
 
 -- service_role（サーバーサイド API）が必要なテーブルへのアクセス権
 grant select, insert, update, delete on public.encounter_logs          to service_role;
+grant select, update                  on public.clones                 to service_role;

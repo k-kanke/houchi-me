@@ -97,10 +97,9 @@ export default function ChatPanel() {
     const { message, fixedReply } = chatTrigger;
     setChatTrigger(null);
     setChatPanelOpen(true);
-    const timer = window.setTimeout(() => {
-      void send(message, fixedReply);
-    }, 0);
-    return () => window.clearTimeout(timer);
+    // 直接呼ぶ。setTimeout(...,0) を挟むと、setChatTrigger(null) によって
+    // useEffect の deps が変化 → cleanup で clearTimeout が走り、send が発火しない。
+    void send(message, fixedReply);
   }, [chatTrigger, setChatTrigger, setChatPanelOpen, send]);
 
   useEffect(() => {

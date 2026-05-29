@@ -1,6 +1,6 @@
 # 放置Me 開発ルール（team-05）
 
-ハッカソン 3 日間向けの最小ルール。迷ったら **plan.md のタスク ID** を基準にする。
+ハッカソン 3 日間向けの最小ルール。迷ったら **PLAN.md のタスク ID** を基準にする。
 
 ---
 
@@ -13,7 +13,7 @@ git checkout main
 git pull origin main
 ```
 
-- [ ] [plan.md](./plan.md) で担当タスク（`HO-xxx`）を確認する
+- [ ] [PLAN.md](../PLAN.md) で担当タスク（`HO-xxx`）を確認する
 - [ ] **LINE で担当宣言**（下記テンプレ）してから着手する
 
 ```
@@ -31,7 +31,7 @@ git pull origin main
 
 ### 1.1 原則
 
-- **1 タスク = 1 ブランチ**（`plan.md` のチェックボックス 1 行単位が目安）
+- **1 タスク = 1 ブランチ**（`PLAN.md` のチェックボックス 1 行単位が目安）
 - **`main` には直接 push しない**（緊急時のみ PM が判断）
 - ブランチ名は **英小文字・ハイフン区切り**。可能なら **タスク ID を含める**
 
@@ -100,7 +100,7 @@ npm run build # エラーが出ないこと
 
 ## 3. タスク完了時
 
-1. [plan.md](./plan.md) の該当行を `- [x]` に更新する（**同じ PR に含めてよい**）
+1. [PLAN.md](../PLAN.md) の該当行を `- [x]` に更新する（**同じ PR に含めてよい**）
 2. 担当ブランチに push
 3. **Pull Request** を `main` 向けに作成
 4. LINE で PR URL を共有（テンプレ下記）
@@ -115,7 +115,7 @@ npm run build # エラーが出ないこと
 
 ```markdown
 ## タスク
-- plan.md: HO-xxx（チェック済み）
+- PLAN.md: HO-xxx（チェック済み）
 
 ## 変更内容
 - （箇条書き 2〜5 行）
@@ -212,9 +212,9 @@ git merge origin/main
 | PM | タスク割当、PR 優先度、デモ URL、提出物 |
 | FE | `frontend/src/`、Vercel、画面連携 |
 | BE / Infra | Supabase、Edge Functions、RLS、シード |
-| 全員 | plan.md 更新、AI ログ、レビュー |
+| 全員 | PLAN.md 更新、AI ログ、レビュー |
 
-詳細タスクは [plan.md](./plan.md) の「担当目安」列を参照。
+詳細タスクは [PLAN.md](../PLAN.md) を参照。
 
 ---
 
@@ -222,7 +222,7 @@ git merge origin/main
 
 - `main` への force push（**禁止**）
 - レビューなしの大量マージ
-- plan.md にない大規模リファクタ（時間が余ったら相談）
+- PLAN.md にない大規模リファクタ（時間が余ったら相談）
 - 秘密情報のコミット・スクショ共有
 
 ---
@@ -231,7 +231,8 @@ git merge origin/main
 
 | ファイル | 用途 |
 |----------|------|
-| [plan.md](./plan.md) | タスク一覧・進捗チェック |
+| [PLAN.md](../PLAN.md) | タスク一覧・進捗チェック |
+| [archived-plan-2026-05.md](./archived-plan-2026-05.md) | 旧計画・履歴 |
 | [README.md](../README.md) | セットアップ・デモ URL・提出ステータス |
 | [AI_USAGE_LOG.md](./AI_USAGE_LOG.md) | AI 活用の記録（審査用） |
 

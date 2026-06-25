@@ -4,7 +4,7 @@
 
 ## 1. 目的
 
-放置Me の中核処理を Vercel / Supabase Edge Functions だけに依存しない形へ移行する。
+放置Me の中核処理を Vercel / Supabase Edge Functions だけに依存しない形へ移行。
 
 まずは独立 Go サーバーを薄く立て、既存の同期 API を HTTP JSON で置き換える。その後、日次シミュレーションや LLM 処理を job / worker 化し、公開サービスとしての遅延・失敗・コスト・同時実行に耐えられる構成へ進める。
 

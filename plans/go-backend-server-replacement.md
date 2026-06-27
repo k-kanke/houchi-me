@@ -39,7 +39,7 @@ Supabase Postgres
   +-- Redis or queue service, later
 ```
 
-公開初期は Next.js から Go API を呼ぶ。ブラウザから直接 Go API を呼ぶ場合も、必ず Supabase JWT を渡し、Go 側で検証する。
+公開初期は Next.js から Go API を呼ぶ。ブラウザから直接 Go API を呼ぶ場合も、必ず Supabase JWT を渡し、Go 側で検証。
 
 ## 4. リポジトリ構成案
 
